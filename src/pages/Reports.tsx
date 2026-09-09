@@ -17,7 +17,7 @@ const TABS: { key: Tab; label: string; icon: any }[] = [
 ]
 
 export default function Reports() {
-  const { transactions, loans, documents, notes, bills, budgets } = useStore()
+  const { transactions, loans, documents, notes, bills, budgets, goals } = useStore()
   const [tab, setTab] = useState<Tab>('summary')
 
   const t = useMemo(() => totals(transactions), [transactions])
@@ -29,7 +29,7 @@ export default function Reports() {
   const incCats = useMemo(() => byCategory(transactions, 'income'), [transactions])
   const persons = useMemo(() => byPerson(transactions), [transactions])
   const ls = useMemo(() => loanSummary(loans), [loans])
-  const plan = useMemo(() => monthPlan(transactions, loans, bills), [transactions, loans, bills])
+  const plan = useMemo(() => monthPlan(transactions, loans, bills, goals), [transactions, loans, bills, goals])
 
   const exportCsv = () => {
     const rows = [

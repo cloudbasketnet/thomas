@@ -15,14 +15,7 @@ interface Item {
   bought: boolean
 }
 
-const SEED_LIST: Item[] = [
-  { id: 'i1', name: 'Basmati Rice 10kg', qty: 1, price: 62, category: 'Groceries', bought: false },
-  { id: 'i2', name: 'Cooking Oil 5L', qty: 2, price: 41, category: 'Groceries', bought: false },
-  { id: 'i3', name: 'Chicken 2kg', qty: 1, price: 34, category: 'Groceries', bought: true },
-  { id: 'i4', name: 'Detergent', qty: 1, price: 28, category: 'Household', bought: false },
-  { id: 'i5', name: 'School Notebooks', qty: 6, price: 7, category: 'Kids', bought: false },
-  { id: 'i6', name: 'Coffee Beans 1kg', qty: 1, price: 55, category: 'Groceries', bought: true },
-]
+const SEED_LIST: Item[] = []
 
 const STORAGE_KEY = 'thomas-shopping-list-v1'
 

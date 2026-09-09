@@ -1,6 +1,5 @@
-import type { Account, Bill, BudgetCategory, Loan, Transaction } from '@/types'
+import type { Account, Bill, BudgetCategory, Goal, Loan, Transaction } from '@/types'
 import { toBase, monthKey, daysLeft, TODAY, addMonths, monthLabel } from '@/lib/format'
-import { MONTHLY_HISTORY } from '@/data/seed'
 
 /** The live calendar month, so every "this month" figure follows the real clock. */
 export const CURRENT_MONTH = TODAY.slice(0, 7)
@@ -63,22 +62,12 @@ export function byAccount(txns: Transaction[], type: 'income' | 'expense', accou
     .sort((a, b) => b.value - a.value)
 }
 
-/**
- * Trailing 9 months ending on the current one. Real transactions drive every
- * month that has any; months with none fall back to the seeded history so the
- * demo charts still read well on a fresh account.
- */
+/** Trailing 9 months ending on the current one, built from your transactions. */
 export function monthlySeries(txns: Transaction[]) {
-  const fallback = new Map(MONTHLY_HISTORY.map((m) => [m.month, m]))
   return Array.from({ length: 9 }, (_, i) => {
     const key = addMonths(CURRENT_MONTH, i - 8)
-    const label = monthLabel(key)
     const live = totals(txns, key)
-    if (live.count > 0) {
-      return { month: label, income: Math.round(live.income), expenses: Math.round(live.expenses) }
-    }
-    const seeded = fallback.get(label)
-    return { month: label, income: seeded?.income ?? 0, expenses: seeded?.expenses ?? 0 }
+    return { month: monthLabel(key), income: Math.round(live.income), expenses: Math.round(live.expenses) }
   })
 }
 
@@ -145,13 +134,23 @@ export function docStatus(expiry: string): 'Valid' | 'Expiring Soon' | 'Expired'
   return 'Valid'
 }
 
-/** The "This Month Plan" AI-style suggestion shown on the dashboard. */
-export function monthPlan(txns: Transaction[], loans: Loan[], bills: Bill[], goalsMonthly = 1500) {
+/**
+ * The "This Month Plan" figure on the dashboard. Every line is derived — the
+ * savings line is what your goals need per month to land by their deadlines.
+ */
+export function monthPlan(txns: Transaction[], loans: Loan[], bills: Bill[], goals: Goal[] = []) {
   const t = totals(txns, CURRENT_MONTH)
   const requiredExpenses = Math.round(t.expenses)
-  const upcomingLoans = Math.round(loanSummary(loans).dueAmount + 500)
+  const upcomingLoans = Math.round(loanSummary(loans).dueAmount)
   const upcomingBills = Math.round(billSummary(bills).upcomingTotal)
-  const savings = goalsMonthly
+  const savings = Math.round(
+    goals.reduce((acc, g) => {
+      const remaining = Math.max(0, g.target - g.saved)
+      if (!remaining) return acc
+      const months = Math.max(1, Math.round(daysLeft(g.deadline) / 30))
+      return acc + remaining / months
+    }, 0),
+  )
   const totalRequired = requiredExpenses + upcomingLoans + upcomingBills + savings
   const expectedIncome = Math.round(t.income)
   return {

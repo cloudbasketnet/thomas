@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Loader2, LogIn, Mail, Lock, Sparkles } from 'lucide-react'
 import { hasSupabase, supabase } from '@/lib/supabase'
-import { isEmpty, pullAll, seedRemote } from '@/lib/sync'
+import { pullAll } from '@/lib/sync'
 import { useStore } from '@/store/useStore'
 
 type Phase = 'checking' | 'signed-out' | 'loading-data' | 'ready'
@@ -46,7 +46,6 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
       setPhase('loading-data')
       try {
-        if (await isEmpty()) await seedRemote(userId)
         const data = await pullAll()
         if (cancelled) return
         hydrate(data)
@@ -268,8 +267,8 @@ function SignIn() {
           <div className="mt-8 rounded-xl bg-white border border-[#e8edf5] px-4 py-3 flex items-start gap-2.5">
             <Sparkles size={15} className="text-brand-500 mt-0.5 shrink-0" />
             <p className="text-[11.5px] text-slate-500 leading-relaxed">
-              First sign-in loads a starter dataset so the dashboard has something to show. Replace it with your own
-              figures any time, or reset from Settings.
+A new account starts empty. Add your accounts first, then income and expenses — every figure on the
+              dashboard is calculated from what you enter.
             </p>
           </div>
         </div>

@@ -22,7 +22,7 @@ export default function Dashboard() {
   const prev = useMemo(() => totals(transactions, PREV_MONTH), [transactions])
   const series = useMemo(() => monthlySeries(transactions), [transactions])
   const persons = useMemo(() => byPerson(transactions), [transactions])
-  const plan = useMemo(() => monthPlan(transactions, loans, bills), [transactions, loans, bills])
+  const plan = useMemo(() => monthPlan(transactions, loans, bills, goals), [transactions, loans, bills, goals])
   const ls = useMemo(() => loanSummary(loans), [loans])
   const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
 
@@ -167,6 +167,12 @@ export default function Dashboard() {
         <Card className="xl:col-span-4">
           <CardHead title="Budget Progress" right={<ViewAll to="/budget" />} />
           <div className="px-5 pb-5 space-y-3.5">
+            {budgets.length === 0 && (
+              <div className="py-8 text-center">
+                <p className="text-[12.5px] text-slate-400">No budget categories yet.</p>
+                <Link to="/budget" className="btn-soft mt-3 inline-flex"><Plus size={13} /> Create a budget</Link>
+              </div>
+            )}
             {budgets.slice(0, 6).map((b) => (
               <div key={b.id}>
                 <div className="flex items-center gap-2.5 mb-1.5">
@@ -218,6 +224,9 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
+                {loans.length === 0 && (
+                  <tr><td className="td text-center text-slate-400 py-8" colSpan={5}>No loans tracked yet.</td></tr>
+                )}
                 {loans.map((l) => (
                   <tr key={l.id} className="row-hover">
                     <td className="td font-semibold text-slate-800">
@@ -262,6 +271,9 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
+                {documents.length === 0 && (
+                  <tr><td className="td text-center text-slate-400 py-8" colSpan={4}>No documents tracked yet.</td></tr>
+                )}
                 {documents.slice(0, 6).map((d) => {
                   const st = docStatus(d.expiry)
                   const dl = daysLeft(d.expiry)
@@ -329,6 +341,9 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#f1f5f9]">
+                {visibleNotes.length === 0 && (
+                  <tr><td className="td text-center text-slate-400 py-8" colSpan={4}>No notes yet.</td></tr>
+                )}
                 {visibleNotes.map((n) => (
                   <tr key={n.id} className="row-hover">
                     <td className={`td font-semibold ${n.done ? 'line-through text-slate-400' : 'text-slate-800'}`}>
@@ -383,6 +398,9 @@ export default function Dashboard() {
         <Card className="xl:col-span-3">
           <CardHead title="Savings Goals" right={<ViewAll to="/goals" />} />
           <div className="px-5 pb-5 space-y-4">
+            {goals.length === 0 && (
+              <p className="text-[12.5px] text-slate-400 py-6 text-center">No savings goals yet.</p>
+            )}
             {goals.slice(0, 4).map((g) => (
               <div key={g.id} className="flex items-center gap-3">
                 <span
@@ -452,7 +470,7 @@ export default function Dashboard() {
 function CurrencyConverter() {
   const [from, setFrom] = useState<Currency>('INR')
   const [to, setTo] = useState<Currency>('AED')
-  const [amount, setAmount] = useState('100000')
+  const [amount, setAmount] = useState('1000')
 
   const result = convert(Number(amount) || 0, from, to)
   const rate = convert(1, from, to)

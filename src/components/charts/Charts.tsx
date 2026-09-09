@@ -11,6 +11,25 @@ export const PALETTE = [
 
 const axis = { fontSize: 11, fill: '#94a3b8' }
 
+/**
+ * Recharts animates every mark through react-smooth, which never starts under
+ * React 19 — the axes, grid and legend paint but the bars, pie sectors and
+ * lines stay empty. Drawing them without animation is what makes them appear.
+ */
+const STATIC = { isAnimationActive: false } as const
+
+/** Placeholder for a chart with nothing to draw yet. */
+function NoData({ height, text = 'No data yet' }: { height: number | string; text?: string }) {
+  return (
+    <div className="grid place-items-center text-[12px] text-slate-400" style={{ height }}>
+      {text}
+    </div>
+  )
+}
+
+const hasValues = (data: any[], keys: string[]) =>
+  data.length > 0 && data.some((d) => keys.some((k) => Number(d[k]) > 0))
+
 function TipBox({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
   return (
@@ -32,6 +51,7 @@ export function IncomeExpenseBars({
   data: { month: string; income: number; expenses: number }[]
   height?: number
 }) {
+  if (!hasValues(data, ['income', 'expenses'])) return <NoData height={height} text="No income or expenses recorded yet" />
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 5, left: -18, bottom: 0 }} barGap={3}>
@@ -46,8 +66,8 @@ export function IncomeExpenseBars({
           verticalAlign="top"
           align="right"
         />
-        <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={16} />
-        <Bar dataKey="expenses" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={16} />
+        <Bar {...STATIC} dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={16} />
+        <Bar {...STATIC} dataKey="expenses" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={16} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -66,6 +86,7 @@ export function SingleBars({
   highlight?: string
   height?: number
 }) {
+  if (!hasValues(data, [dataKey])) return <NoData height={height} />
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 5, left: -18, bottom: 0 }}>
@@ -73,7 +94,7 @@ export function SingleBars({
         <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} cursor={{ fill: '#f1f5f9' }} />
-        <Bar dataKey={dataKey} name="Amount" radius={[5, 5, 0, 0]} maxBarSize={30}>
+        <Bar {...STATIC} dataKey={dataKey} name="Amount" radius={[5, 5, 0, 0]} maxBarSize={30}>
           {data.map((d, i) => (
             <Cell key={i} fill={highlight && d.month === highlight ? color : `${color}80`} />
           ))}
@@ -84,6 +105,7 @@ export function SingleBars({
 }
 
 export function TrendLine({ data, height = 220 }: { data: any[]; height?: number }) {
+  if (!hasValues(data, ['income', 'expenses'])) return <NoData height={height} text="No income or expenses recorded yet" />
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
@@ -92,9 +114,9 @@ export function TrendLine({ data, height = 220 }: { data: any[]; height?: number
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} verticalAlign="top" align="right" />
-        <Line type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2.5} dot={false} />
-        <Line type="monotone" dataKey="expenses" name="Expenses" stroke="#f43f5e" strokeWidth={2.5} dot={false} />
-        <Line type="monotone" dataKey="net" name="Net" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+        <Line {...STATIC} type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2.5} dot={false} />
+        <Line {...STATIC} type="monotone" dataKey="expenses" name="Expenses" stroke="#f43f5e" strokeWidth={2.5} dot={false} />
+        <Line {...STATIC} type="monotone" dataKey="net" name="Net" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" dot={false} />
       </LineChart>
     </ResponsiveContainer>
   )
@@ -116,18 +138,26 @@ export function Donut({
   innerRatio?: number
 }) {
   const outer = size / 2 - 6
+  const empty = !hasValues(data, ['value'])
   return (
     <div className="relative" style={{ width: size, height: size }}>
+      {empty && (
+        <div
+          className="absolute inset-0 rounded-full border-[14px] border-slate-100"
+          style={{ borderWidth: Math.max(10, outer * (1 - innerRatio)) }}
+        />
+      )}
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={empty ? [] : data}
             dataKey="value"
             nameKey="name"
             innerRadius={outer * innerRatio}
             outerRadius={outer}
             paddingAngle={1.5}
             stroke="none"
+            {...STATIC}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={colors[i % colors.length]} />
@@ -136,12 +166,17 @@ export function Donut({
           <Tooltip content={<TipBox />} />
         </PieChart>
       </ResponsiveContainer>
-      {(centerValue || centerLabel) && (
+      {(centerValue || centerLabel) && !empty && (
         <div className="absolute inset-0 grid place-items-center pointer-events-none">
           <div className="text-center">
             <p className="text-[17px] font-extrabold text-slate-900 leading-tight">{centerValue}</p>
             <p className="text-[11px] text-slate-500">{centerLabel}</p>
           </div>
+        </div>
+      )}
+      {empty && (
+        <div className="absolute inset-0 grid place-items-center pointer-events-none">
+          <p className="text-[11px] text-slate-400">No data</p>
         </div>
       )}
     </div>
@@ -159,6 +194,7 @@ export function DonutLegend({
   colors?: string[]
   showValue?: boolean
 }) {
+  if (!data.length) return <p className="text-[12px] text-slate-400 py-2">Nothing to show yet.</p>
   return (
     <ul className="space-y-2.5 min-w-[168px]">
       {data.map((d, i) => (

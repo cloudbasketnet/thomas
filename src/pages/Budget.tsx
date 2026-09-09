@@ -70,8 +70,8 @@ export default function Budget() {
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
                 <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: 12, border: '1px solid #e8edf5', fontSize: 12 }} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} verticalAlign="top" align="right" />
-                <Bar dataKey="Budget" fill="#bfdbfe" radius={[4, 4, 0, 0]} maxBarSize={22} />
-                <Bar dataKey="Actual" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <Bar isAnimationActive={false} dataKey="Budget" fill="#bfdbfe" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                <Bar isAnimationActive={false} dataKey="Actual" fill="#2563eb" radius={[4, 4, 0, 0]} maxBarSize={22} />
               </BarChart>
             </ResponsiveContainer>
           </div>

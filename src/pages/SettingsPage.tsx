@@ -6,12 +6,12 @@ import { Field } from '@/components/ui/Modal'
 import { money } from '@/lib/format'
 import { FX } from '@/data/seed'
 import { hasSupabase, supabase } from '@/lib/supabase'
-import { pullAll, pushAll, replaceRemote, resetRemote } from '@/lib/sync'
+import { pullAll, pushAll, replaceRemote, wipeRemote } from '@/lib/sync'
 import type { Currency } from '@/types'
 
 export default function SettingsPage() {
   const store = useStore()
-  const { settings, updateSettings, resetDemoData, userId, userEmail, syncError, lastSynced, hydrate } = store
+  const { settings, updateSettings, clearAllData, userId, userEmail, syncError, lastSynced, hydrate } = store
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState<'push' | 'pull' | 'reset' | 'import' | null>(null)
   const [cloudMsg, setCloudMsg] = useState<string | null>(null)
@@ -188,23 +188,23 @@ export default function SettingsPage() {
                 className="btn bg-rose-50 text-rose-700 hover:bg-rose-100"
                 disabled={busy !== null}
                 onClick={async () => {
-                  const where = userId ? 'in Supabase and in this browser' : 'in this browser'
-                  if (!confirm(`Reset all data back to the demo dataset ${where}? Your changes will be lost.`)) return
-                  resetDemoData()
+                  const where = userId ? 'from Supabase and this browser' : 'from this browser'
+                  if (!confirm(`Delete every account, transaction, budget, loan, bill, document, note, goal and purchase ${where}? This cannot be undone — export a backup first if you want one.`)) return
+                  clearAllData()
                   flash()
                   if (!userId) return
                   setBusy('reset'); setCloudMsg(null)
                   try {
-                    await resetRemote(userId)
-                    hydrate(await pullAll())
-                    setCloudMsg('Data reset to the demo dataset.')
+                    await wipeRemote(userId)
+                    setCloudMsg('All data cleared.')
+                    useStore.setState({ syncError: null, lastSynced: new Date().toISOString() })
                   } catch (e) {
                     useStore.setState({ syncError: e instanceof Error ? e.message : String(e) })
                   }
                   setBusy(null)
                 }}
               >
-                {busy === 'reset' ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Reset
+                {busy === 'reset' ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Clear All
               </button>
             </div>
             <p className="text-[11.5px] text-slate-400 mt-3 leading-relaxed">

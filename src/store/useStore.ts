@@ -88,7 +88,8 @@ interface State {
   updatePriceWatch: (id: string, patch: Partial<PriceWatch>) => void
   removePriceWatch: (id: string) => void
 
-  resetDemoData: () => void
+  /** Empty every collection, locally. */
+  clearAllData: () => void
   /** Wipe locally cached rows back to the seed set (used on sign-out). */
   clearLocalData: () => void
 }
@@ -349,7 +350,7 @@ export const useStore = create<State>()(
         drop('priceWatch', id)
       },
 
-      resetDemoData: () => set(seedState()),
+      clearAllData: () => set(seedState()),
       clearLocalData: () => {
         setBaseCurrency(SETTINGS.baseCurrency)
         set(seedState())

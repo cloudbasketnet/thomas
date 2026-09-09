@@ -7,6 +7,8 @@ import type { Currency, Transaction, TxnType } from '@/types'
 const INCOME_CATEGORIES = ['Restaurant Sales', 'Online Orders', 'Catering', 'Salary', 'Investment', 'Refund / Adjustment', 'Other Income']
 const EXPENSE_CATEGORIES = ['Home / Rent', 'Groceries', 'Transport', 'Utilities', 'Shopping', 'Family Support', 'Health', 'Restaurants', 'Personal', 'Subscriptions', 'Loan Payment', 'Education', 'Other']
 const METHODS = ['Bank Transfer', 'Cash', 'Card', 'Credit Card', 'Cheque', 'Auto Debit', 'Online']
+/** Shown until you add people of your own. */
+const DEFAULT_PEOPLE = ['Me', 'Family', 'Others']
 
 export function TransactionModal({
   open,
@@ -120,6 +122,7 @@ export function TransactionModal({
         </Field>
         <Field label="Account">
           <select className="input" value={form.accountId} onChange={(e) => set('accountId', e.target.value)}>
+            {accounts.length === 0 && <option value="">No accounts yet — add one first</option>}
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
@@ -136,8 +139,8 @@ export function TransactionModal({
         </Field>
         <Field label="Person" className="col-span-2">
           <select className="input" value={form.person} onChange={(e) => set('person', e.target.value)}>
-            {people.map((p) => (
-              <option key={p.id}>{p.name}</option>
+            {(people.length ? people.map((p) => p.name) : DEFAULT_PEOPLE).map((name) => (
+              <option key={name}>{name}</option>
             ))}
           </select>
         </Field>

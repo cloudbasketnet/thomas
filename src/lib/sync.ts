@@ -1,9 +1,7 @@
 import { db } from '@/lib/supabase'
 import { MAPPERS, TABLES, settingsMapper, type Collection } from '@/lib/mappers'
 import type { Settings } from '@/types'
-import {
-  ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, PURCHASES, SETTINGS, TRANSACTIONS,
-} from '@/data/seed'
+import { SETTINGS } from '@/data/seed'
 
 const COLLECTIONS = Object.keys(TABLES) as Collection[]
 
@@ -46,43 +44,6 @@ export async function pullAll(): Promise<RemoteData> {
   return out as RemoteData
 }
 
-/** True when the account has no rows at all — i.e. a fresh sign-up. */
-export async function isEmpty(): Promise<boolean> {
-  const { count, error } = await db()
-    .from('accounts')
-    .select('id', { count: 'exact', head: true })
-  if (error) throw error
-  return (count ?? 0) === 0
-}
-
-/** Populate a brand-new account with the demo dataset so the app isn't blank. */
-export async function seedRemote(userId: string): Promise<void> {
-  const client = db()
-  const stamp = (rows: any[], c: Collection) =>
-    rows.map((r) => ({ ...MAPPERS[c].to(r), user_id: userId }))
-
-  const payloads: [Collection, any[]][] = [
-    ['accounts', ACCOUNTS],
-    ['people', PEOPLE],
-    ['transactions', TRANSACTIONS],
-    ['budgets', BUDGETS],
-    ['loans', LOANS],
-    ['bills', BILLS],
-    ['documents', DOCUMENTS],
-    ['notes', NOTES],
-    ['goals', GOALS],
-    ['purchases', PURCHASES],
-    ['priceWatch', PRICE_WATCH],
-  ]
-
-  await upsertSettings(SETTINGS, userId)
-
-  for (const [collection, rows] of payloads) {
-    const { error } = await client.from(TABLES[collection]).upsert(stamp(rows, collection))
-    if (error) throw error
-  }
-}
-
 export async function upsertRow(collection: Collection, item: any, userId: string) {
   const row = { ...MAPPERS[collection].to(item), user_id: userId }
   const { error } = await db().from(TABLES[collection]).upsert(row)
@@ -122,12 +83,6 @@ export async function wipeRemote(userId: string): Promise<void> {
   }
   const { error } = await client.from('settings').delete().eq('user_id', userId)
   if (error) throw error
-}
-
-/** Reset the account back to the demo dataset, in the cloud as well as locally. */
-export async function resetRemote(userId: string): Promise<void> {
-  await wipeRemote(userId)
-  await seedRemote(userId)
 }
 
 /** Replace everything in the cloud with the given local state. */

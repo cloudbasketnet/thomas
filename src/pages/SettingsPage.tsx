@@ -1,0 +1,275 @@
+import { useState } from 'react'
+import { Cloud, CloudOff, Database, Download, Loader2, LogOut, RefreshCw, RotateCcw, Save, Upload, User } from 'lucide-react'
+import { useStore } from '@/store/useStore'
+import { Card, CardHead, PageHeader } from '@/components/ui/Primitives'
+import { Field } from '@/components/ui/Modal'
+import { money } from '@/lib/format'
+import { FX } from '@/data/seed'
+import { hasSupabase, supabase } from '@/lib/supabase'
+import { pullAll, pushAll } from '@/lib/sync'
+import type { Currency } from '@/types'
+
+export default function SettingsPage() {
+  const store = useStore()
+  const { settings, updateSettings, resetDemoData, userId, userEmail, syncError, lastSynced, hydrate } = store
+  const [saved, setSaved] = useState(false)
+  const [busy, setBusy] = useState<'push' | 'pull' | null>(null)
+  const [cloudMsg, setCloudMsg] = useState<string | null>(null)
+
+  const flash = () => {
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1800)
+  }
+
+  const exportJson = () => {
+    const data = {
+      settings: store.settings, accounts: store.accounts, transactions: store.transactions,
+      budgets: store.budgets, loans: store.loans, people: store.people, bills: store.bills,
+      documents: store.documents, notes: store.notes, goals: store.goals,
+      purchases: store.purchases, priceWatch: store.priceWatch,
+    }
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `thomas-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importJson = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result))
+        useStore.setState(data)
+        flash()
+      } catch {
+        alert('That file could not be read as a Thomas backup.')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const counts = [
+    ['Accounts', store.accounts.length],
+    ['Transactions', store.transactions.length],
+    ['Budgets', store.budgets.length],
+    ['Loans', store.loans.length],
+    ['People', store.people.length],
+    ['Bills', store.bills.length],
+    ['Documents', store.documents.length],
+    ['Notes', store.notes.length],
+    ['Goals', store.goals.length],
+    ['Purchases', store.purchases.length],
+  ] as const
+
+  return (
+    <div className="space-y-5 max-w-[1100px]">
+      <PageHeader title="Settings" subtitle="Profile, currency, targets and your data." />
+
+      {saved && (
+        <div className="card px-5 py-3 bg-emerald-50/70 border-emerald-100 text-[13px] font-semibold text-emerald-800">
+          ✅ Saved.
+        </div>
+      )}
+
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <Card>
+          <CardHead title="Profile" sub="How Thomas.ai greets you" right={<User size={16} className="text-slate-400" />} />
+          <div className="px-5 pb-5 grid grid-cols-2 gap-4">
+            <Field label="Your Name" className="col-span-2">
+              <input className="input" value={settings.userName} onChange={(e) => updateSettings({ userName: e.target.value })} />
+            </Field>
+            <Field label="Account Label" className="col-span-2">
+              <input className="input" value={settings.accountLabel} onChange={(e) => updateSettings({ accountLabel: e.target.value })} placeholder="Personal Account" />
+            </Field>
+            <Field label="Base Currency">
+              <select className="input" value={settings.baseCurrency} onChange={(e) => updateSettings({ baseCurrency: e.target.value as Currency })}>
+                <option>AED</option><option>INR</option><option>USD</option>
+              </select>
+            </Field>
+            <div className="flex items-end">
+              <button className="btn-primary w-full" onClick={flash}><Save size={15} /> Save Profile</button>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHead title="Targets & Period" sub="Drives the dashboard progress bars and AI plan" />
+          <div className="px-5 pb-5 grid grid-cols-2 gap-4">
+            <Field label="Monthly Income Target (AED)">
+              <input className="input" type="number" value={settings.monthlyIncomeTarget} onChange={(e) => updateSettings({ monthlyIncomeTarget: Number(e.target.value) || 0 })} />
+            </Field>
+            <Field label="Monthly Budget (AED)">
+              <input className="input" type="number" value={settings.monthlyBudget} onChange={(e) => updateSettings({ monthlyBudget: Number(e.target.value) || 0 })} />
+            </Field>
+            <Field label="Period Start">
+              <input className="input" type="date" value={settings.periodStart} onChange={(e) => updateSettings({ periodStart: e.target.value })} />
+            </Field>
+            <Field label="Period End">
+              <input className="input" type="date" value={settings.periodEnd} onChange={(e) => updateSettings({ periodEnd: e.target.value })} />
+            </Field>
+            <div className="col-span-2 rounded-xl bg-slate-50 px-4 py-3 text-[12px] text-slate-600">
+              Income target {money(settings.monthlyIncomeTarget)} · Budget {money(settings.monthlyBudget)} · Headroom{' '}
+              <b className="text-slate-800">{money(settings.monthlyIncomeTarget - settings.monthlyBudget)}</b>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHead title="Exchange Rates" sub="Used to convert every amount into AED" />
+          <div className="px-5 pb-5 space-y-2.5">
+            {Object.entries(FX).map(([code, rate]) => (
+              <div key={code} className="flex items-center gap-3 rounded-xl border border-[#eef2f8] px-3.5 py-2.5">
+                <span className="text-[13px] font-bold text-slate-800 w-12">{code}</span>
+                <span className="flex-1 text-[12px] text-slate-500">1 {code} equals</span>
+                <span className="text-[13px] font-bold text-slate-800 tabular-nums">{rate} AED</span>
+              </div>
+            ))}
+            <p className="text-[11.5px] text-slate-400 pt-1">
+              Rates are fixed in <code className="text-[11px]">src/data/seed.ts</code> — swap in a live rates API when you
+              are ready.
+            </p>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHead title="Your Data" sub="Everything is stored locally in this browser" right={<Database size={16} className="text-slate-400" />} />
+          <div className="px-5 pb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+              {counts.map(([label, n]) => (
+                <div key={label} className="rounded-xl bg-slate-50 px-3 py-2">
+                  <p className="text-[16px] font-extrabold text-slate-800 leading-none">{n}</p>
+                  <p className="text-[10.5px] text-slate-400 mt-1">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <button className="btn-ghost" onClick={exportJson}><Download size={15} /> Export</button>
+              <label className="btn-ghost cursor-pointer">
+                <Upload size={15} /> Import
+                <input
+                  type="file"
+                  accept="application/json"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])}
+                />
+              </label>
+              <button
+                className="btn bg-rose-50 text-rose-700 hover:bg-rose-100"
+                onClick={() => {
+                  if (confirm('Reset all data back to the demo dataset? Your changes will be lost.')) {
+                    resetDemoData()
+                    flash()
+                  }
+                }}
+              >
+                <RotateCcw size={15} /> Reset
+              </button>
+            </div>
+            <p className="text-[11.5px] text-slate-400 mt-3 leading-relaxed">
+              Data lives in this browser's local storage under <code className="text-[11px]">thomas-finance-v1</code>.
+              Export regularly if it matters — clearing site data wipes it.
+            </p>
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHead
+            title="Cloud Sync"
+            sub={hasSupabase ? 'Your data is stored in your own Supabase project' : 'Not configured — running local-only'}
+            right={hasSupabase ? <Cloud size={16} className="text-brand-500" /> : <CloudOff size={16} className="text-slate-400" />}
+          />
+          <div className="px-5 pb-5">
+            {!hasSupabase && (
+              <p className="text-[12.5px] text-slate-500 leading-relaxed">
+                Add <code className="text-[11px]">VITE_SUPABASE_URL</code> and{' '}
+                <code className="text-[11px]">VITE_SUPABASE_ANON_KEY</code> to <code className="text-[11px]">.env.local</code>,
+                then restart the dev server to enable sign-in and cloud sync.
+              </p>
+            )}
+
+            {hasSupabase && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
+                  <div className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+                    <p className="text-[10.5px] text-slate-400">Signed in as</p>
+                    <p className="text-[12.5px] font-bold text-slate-800 truncate">{userEmail ?? '—'}</p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+                    <p className="text-[10.5px] text-slate-400">Status</p>
+                    <p className={`text-[12.5px] font-bold ${syncError ? 'text-rose-600' : 'text-emerald-600'}`}>
+                      {syncError ? 'Sync error' : 'Connected'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-slate-50 px-3.5 py-2.5">
+                    <p className="text-[10.5px] text-slate-400">Last synced</p>
+                    <p className="text-[12.5px] font-bold text-slate-800">
+                      {lastSynced ? new Date(lastSynced).toLocaleTimeString() : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {(cloudMsg || syncError) && (
+                  <div className={`rounded-xl px-3.5 py-2.5 text-[12px] mb-3 ${syncError ? 'bg-rose-50 text-rose-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                    {syncError ?? cloudMsg}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <button
+                    className="btn-ghost"
+                    disabled={busy !== null || !userId}
+                    onClick={async () => {
+                      if (!userId) return
+                      setBusy('push'); setCloudMsg(null)
+                      try {
+                        await pushAll(useStore.getState(), userId)
+                        setCloudMsg('Local data pushed to Supabase.')
+                        useStore.setState({ syncError: null, lastSynced: new Date().toISOString() })
+                      } catch (e) {
+                        useStore.setState({ syncError: e instanceof Error ? e.message : String(e) })
+                      }
+                      setBusy(null)
+                    }}
+                  >
+                    {busy === 'push' ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />} Push to Cloud
+                  </button>
+
+                  <button
+                    className="btn-ghost"
+                    disabled={busy !== null || !userId}
+                    onClick={async () => {
+                      setBusy('pull'); setCloudMsg(null)
+                      try {
+                        hydrate(await pullAll())
+                        setCloudMsg('Pulled the latest data from Supabase.')
+                      } catch (e) {
+                        useStore.setState({ syncError: e instanceof Error ? e.message : String(e) })
+                      }
+                      setBusy(null)
+                    }}
+                  >
+                    {busy === 'pull' ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />} Pull from Cloud
+                  </button>
+
+                  <button
+                    className="btn bg-rose-50 text-rose-700 hover:bg-rose-100"
+                    onClick={() => supabase?.auth.signOut()}
+                  >
+                    <LogOut size={15} /> Sign Out
+                  </button>
+                </div>
+
+                <p className="text-[11.5px] text-slate-400 mt-3 leading-relaxed">
+                  Every add, edit and delete writes straight through to Postgres. Row level security scopes all twelve
+                  tables to your user id, so the anon key in the bundle exposes nothing on its own.
+                </p>
+              </>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,51 @@
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { Layout } from '@/components/Layout'
+import { AuthGate } from '@/components/AuthGate'
+import Dashboard from '@/pages/Dashboard'
+import Accounts from '@/pages/Accounts'
+import Income from '@/pages/Income'
+import Expenses from '@/pages/Expenses'
+import Purchases from '@/pages/Purchases'
+import Budget from '@/pages/Budget'
+import Loans from '@/pages/Loans'
+import People from '@/pages/People'
+import Bills from '@/pages/Bills'
+import Documents from '@/pages/Documents'
+import Notes from '@/pages/Notes'
+import PriceTracker from '@/pages/PriceTracker'
+import Shopping from '@/pages/Shopping'
+import Goals from '@/pages/Goals'
+import Reports from '@/pages/Reports'
+import CalendarPage from '@/pages/CalendarPage'
+import SettingsPage from '@/pages/SettingsPage'
+
+export default function App() {
+  return (
+    <AuthGate>
+      <HashRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="accounts" element={<Accounts />} />
+            <Route path="income" element={<Income />} />
+            <Route path="expenses" element={<Expenses />} />
+            <Route path="purchases" element={<Purchases />} />
+            <Route path="budget" element={<Budget />} />
+            <Route path="loans" element={<Loans />} />
+            <Route path="people" element={<People />} />
+            <Route path="bills" element={<Bills />} />
+            <Route path="documents" element={<Documents />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="price-tracker" element={<PriceTracker />} />
+            <Route path="shopping" element={<Shopping />} />
+            <Route path="goals" element={<Goals />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </HashRouter>
+    </AuthGate>
+  )
+}

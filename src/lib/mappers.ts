@@ -1,0 +1,177 @@
+import type {
+  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Purchase, Settings, Transaction,
+} from '@/types'
+
+/** Every syncable collection in the store, and the table that backs it. */
+export const TABLES = {
+  accounts: 'accounts',
+  transactions: 'transactions',
+  budgets: 'budgets',
+  loans: 'loans',
+  people: 'people',
+  bills: 'bills',
+  documents: 'documents',
+  notes: 'notes',
+  goals: 'goals',
+  purchases: 'purchases',
+  priceWatch: 'price_watch',
+} as const
+
+export type Collection = keyof typeof TABLES
+
+type Row = Record<string, any>
+
+const num = (v: any, fallback = 0) => (v == null || v === '' ? fallback : Number(v))
+
+/**
+ * Column mapping per collection. `to` builds the DB row (minus user_id, which
+ * the sync layer stamps on), `from` rebuilds the domain object. Postgres numeric
+ * can arrive as a string, so every numeric field goes through Number().
+ */
+export const MAPPERS: {
+  [K in Collection]: { to: (o: any) => Row; from: (r: Row) => any }
+} = {
+  accounts: {
+    to: (a: Account) => ({
+      id: a.id, name: a.name, type: a.type, details: a.details, balance: a.balance,
+      currency: a.currency, status: a.status, color: a.color, bank: a.bank ?? null,
+    }),
+    from: (r): Account => ({
+      id: r.id, name: r.name, type: r.type, details: r.details, balance: num(r.balance),
+      currency: r.currency, status: r.status, color: r.color, bank: r.bank ?? undefined,
+    }),
+  },
+
+  transactions: {
+    to: (t: Transaction) => ({
+      id: t.id, type: t.type, date: t.date, description: t.description, category: t.category,
+      account_id: t.accountId, amount: t.amount, currency: t.currency,
+      person: t.person ?? null, method: t.method ?? null, notes: t.notes ?? null,
+    }),
+    from: (r): Transaction => ({
+      id: r.id, type: r.type, date: r.date, description: r.description, category: r.category,
+      accountId: r.account_id ?? '', amount: num(r.amount), currency: r.currency,
+      person: r.person ?? undefined, method: r.method ?? undefined, notes: r.notes ?? undefined,
+    }),
+  },
+
+  budgets: {
+    to: (b: BudgetCategory) => ({
+      id: b.id, name: b.name, icon: b.icon, budget: b.budget, spent: b.spent, color: b.color,
+    }),
+    from: (r): BudgetCategory => ({
+      id: r.id, name: r.name, icon: r.icon, budget: num(r.budget), spent: num(r.spent), color: r.color,
+    }),
+  },
+
+  loans: {
+    to: (l: Loan) => ({
+      id: l.id, name: l.name, lender: l.lender, outstanding: l.outstanding, principal: l.principal,
+      emi: l.emi, next_payment: l.nextPayment, currency: l.currency, status: l.status,
+      rate: l.rate, icon: l.icon,
+    }),
+    from: (r): Loan => ({
+      id: r.id, name: r.name, lender: r.lender, outstanding: num(r.outstanding),
+      principal: num(r.principal), emi: num(r.emi), nextPayment: r.next_payment,
+      currency: r.currency, status: r.status, rate: num(r.rate), icon: r.icon,
+    }),
+  },
+
+  people: {
+    to: (p: Person) => ({
+      id: p.id, name: p.name, relation: p.relation, color: p.color, spent: p.spent,
+      they_owe: p.theyOwe, i_owe: p.iOwe, phone: p.phone ?? null,
+    }),
+    from: (r): Person => ({
+      id: r.id, name: r.name, relation: r.relation, color: r.color, spent: num(r.spent),
+      theyOwe: num(r.they_owe), iOwe: num(r.i_owe), phone: r.phone ?? undefined,
+    }),
+  },
+
+  bills: {
+    to: (b: Bill) => ({
+      id: b.id, name: b.name, category: b.category, amount: b.amount, due_date: b.dueDate,
+      frequency: b.frequency, status: b.status, autopay: b.autopay, icon: b.icon,
+    }),
+    from: (r): Bill => ({
+      id: r.id, name: r.name, category: r.category, amount: num(r.amount), dueDate: r.due_date,
+      frequency: r.frequency, status: r.status, autopay: Boolean(r.autopay), icon: r.icon,
+    }),
+  },
+
+  documents: {
+    to: (d: Doc) => ({
+      id: d.id, name: d.name, type: d.type, expiry: d.expiry, owner: d.owner, status: d.status, icon: d.icon,
+    }),
+    from: (r): Doc => ({
+      id: r.id, name: r.name, type: r.type, expiry: r.expiry, owner: r.owner, status: r.status, icon: r.icon,
+    }),
+  },
+
+  notes: {
+    to: (n: Note) => ({
+      id: n.id, title: n.title, category: n.category, due_date: n.dueDate, status: n.status, done: n.done,
+    }),
+    from: (r): Note => ({
+      id: r.id, title: r.title, category: r.category, dueDate: r.due_date,
+      status: r.status, done: Boolean(r.done),
+    }),
+  },
+
+  goals: {
+    to: (g: Goal) => ({
+      id: g.id, name: g.name, target: g.target, saved: g.saved, deadline: g.deadline,
+      icon: g.icon, color: g.color,
+    }),
+    from: (r): Goal => ({
+      id: r.id, name: r.name, target: num(r.target), saved: num(r.saved), deadline: r.deadline,
+      icon: r.icon, color: r.color,
+    }),
+  },
+
+  purchases: {
+    to: (p: Purchase) => ({
+      id: p.id, item: p.item, store: p.store, category: p.category, price: p.price, qty: p.qty,
+      date: p.date, person: p.person, status: p.status,
+      warranty_months: p.warrantyMonths ?? null, notes: p.notes ?? null,
+    }),
+    from: (r): Purchase => ({
+      id: r.id, item: r.item, store: r.store, category: r.category, price: num(r.price),
+      qty: num(r.qty, 1), date: r.date, person: r.person, status: r.status,
+      warrantyMonths: r.warranty_months == null ? undefined : num(r.warranty_months),
+      notes: r.notes ?? undefined,
+    }),
+  },
+
+  priceWatch: {
+    to: (p: PriceWatch) => ({
+      id: p.id, item: p.item, store: p.store, current_price: p.current,
+      previous_price: p.previous, target_price: p.target, updated: p.updated,
+    }),
+    from: (r): PriceWatch => ({
+      id: r.id, item: r.item, store: r.store, current: num(r.current_price),
+      previous: num(r.previous_price), target: num(r.target_price), updated: r.updated,
+    }),
+  },
+}
+
+export const settingsMapper = {
+  to: (s: Settings) => ({
+    user_name: s.userName,
+    account_label: s.accountLabel,
+    base_currency: s.baseCurrency,
+    monthly_income_target: s.monthlyIncomeTarget,
+    monthly_budget: s.monthlyBudget,
+    period_start: s.periodStart,
+    period_end: s.periodEnd,
+  }),
+  from: (r: Row): Settings => ({
+    userName: r.user_name,
+    accountLabel: r.account_label,
+    baseCurrency: r.base_currency,
+    monthlyIncomeTarget: num(r.monthly_income_target),
+    monthlyBudget: num(r.monthly_budget),
+    periodStart: r.period_start,
+    periodEnd: r.period_end,
+  }),
+}

@@ -1,9 +1,10 @@
-import type { Account, Bill, Loan, Transaction } from '@/types'
-import { toBase, monthKey, daysLeft, TODAY } from '@/lib/format'
+import type { Account, Bill, BudgetCategory, Loan, Transaction } from '@/types'
+import { toBase, monthKey, daysLeft, TODAY, addMonths, monthLabel } from '@/lib/format'
 import { MONTHLY_HISTORY } from '@/data/seed'
 
-export const CURRENT_MONTH = '2026-09'
-export const PREV_MONTH = '2026-08'
+/** The live calendar month, so every "this month" figure follows the real clock. */
+export const CURRENT_MONTH = TODAY.slice(0, 7)
+export const PREV_MONTH = addMonths(CURRENT_MONTH, -1)
 
 export function inMonth(txns: Transaction[], month = CURRENT_MONTH) {
   return txns.filter((t) => monthKey(t.date) === month)
@@ -62,12 +63,39 @@ export function byAccount(txns: Transaction[], type: 'income' | 'expense', accou
     .sort((a, b) => b.value - a.value)
 }
 
-/** Monthly history merged with live transaction data for the current month. */
+/**
+ * Trailing 9 months ending on the current one. Real transactions drive every
+ * month that has any; months with none fall back to the seeded history so the
+ * demo charts still read well on a fresh account.
+ */
 export function monthlySeries(txns: Transaction[]) {
-  const live = totals(txns, CURRENT_MONTH)
-  return MONTHLY_HISTORY.map((m) =>
-    m.month === 'Sep' ? { ...m, income: Math.round(live.income), expenses: Math.round(live.expenses) } : m,
-  )
+  const fallback = new Map(MONTHLY_HISTORY.map((m) => [m.month, m]))
+  return Array.from({ length: 9 }, (_, i) => {
+    const key = addMonths(CURRENT_MONTH, i - 8)
+    const label = monthLabel(key)
+    const live = totals(txns, key)
+    if (live.count > 0) {
+      return { month: label, income: Math.round(live.income), expenses: Math.round(live.expenses) }
+    }
+    const seeded = fallback.get(label)
+    return { month: label, income: seeded?.income ?? 0, expenses: seeded?.expenses ?? 0 }
+  })
+}
+
+/** Month labels for the trailing 9-month window, oldest first. */
+export function seriesRange() {
+  const from = monthLabel(addMonths(CURRENT_MONTH, -8))
+  const to = monthLabel(CURRENT_MONTH)
+  return `${from} – ${to} ${CURRENT_MONTH.slice(0, 4)}`
+}
+
+/** Human label for the active month, e.g. 'September 2026'. */
+const LONG_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+export function currentMonthLabel(key = CURRENT_MONTH) {
+  return `${LONG_MONTHS[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`
 }
 
 export function accountTotals(accounts: Account[]) {
@@ -77,7 +105,13 @@ export function accountTotals(accounts: Account[]) {
   const cash = sum('cash')
   const card = sum('card')
   const loan = sum('loan')
-  return { bank, cash, card, loan, total: bank + cash + card + loan }
+  return {
+    bank, cash, card, loan,
+    // Gross is what the four buckets add up to; net treats cards and loans as
+    // the liabilities they are.
+    total: bank + cash + card + loan,
+    net: bank + cash - card - loan,
+  }
 }
 
 /** Liquid balance = bank + cash, minus card outstanding. */
@@ -129,4 +163,65 @@ export function monthPlan(txns: Transaction[], loans: Loan[], bills: Bill[], goa
     expectedIncome,
     shortfall: Math.max(0, totalRequired - expectedIncome),
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// Budget spend is derived from transactions rather than stored, so every
+// expense you record moves the matching budget bar on its own.
+// ---------------------------------------------------------------------------
+
+/** Keywords that tie a transaction category to a budget category name. */
+const BUDGET_KEYWORDS: Record<string, string[]> = {
+  'home / rent': ['home', 'rent', 'family', 'housing'],
+  'family support': ['family', 'home', 'support'],
+  groceries: ['grocer', 'food', 'supermarket'],
+  transport: ['transport', 'fuel', 'car', 'travel'],
+  utilities: ['utilit', 'bill'],
+  subscriptions: ['subscription', 'bill', 'entertainment'],
+  shopping: ['shopping', 'clothing'],
+  restaurants: ['restaurant', 'dining', 'eat'],
+  health: ['health', 'medical', 'pharmacy'],
+  personal: ['personal', 'care'],
+  education: ['education', 'school', 'tuition'],
+  'loan payment': ['loan', 'emi', 'debt'],
+}
+
+/** The budget a transaction category belongs to, or undefined when none fits. */
+export function matchBudget(category: string, budgets: BudgetCategory[]) {
+  const cat = category.trim().toLowerCase()
+  const keys = BUDGET_KEYWORDS[cat] ?? cat.split(/[^a-z]+/).filter((w) => w.length > 2)
+
+  // An exact name match always wins over keyword matching.
+  const exact = budgets.find((b) => b.name.trim().toLowerCase() === cat)
+  if (exact) return exact
+
+  return budgets.find((b) => {
+    const name = b.name.toLowerCase()
+    return keys.some((k) => name.includes(k))
+  })
+}
+
+/** Actual spend per budget id for the given month, in AED. */
+export function budgetSpend(txns: Transaction[], budgets: BudgetCategory[], month = CURRENT_MONTH) {
+  const out = new Map<string, number>(budgets.map((b) => [b.id, 0]))
+  for (const t of inMonth(txns, month)) {
+    if (t.type !== 'expense') continue
+    const b = matchBudget(t.category, budgets)
+    if (b) out.set(b.id, (out.get(b.id) ?? 0) + toBase(t.amount, t.currency))
+  }
+  return out
+}
+
+/** Budgets with `spent` replaced by the live figure derived from transactions. */
+export function budgetsWithSpend(txns: Transaction[], budgets: BudgetCategory[], month = CURRENT_MONTH) {
+  const spend = budgetSpend(txns, budgets, month)
+  return budgets.map((b) => ({ ...b, spent: Math.round(spend.get(b.id) ?? 0) }))
+}
+
+/** Expenses in the month that no budget category covers. */
+export function unbudgetedSpend(txns: Transaction[], budgets: BudgetCategory[], month = CURRENT_MONTH) {
+  return inMonth(txns, month)
+    .filter((t) => t.type === 'expense' && !matchBudget(t.category, budgets))
+    .reduce((a, t) => a + toBase(t.amount, t.currency), 0)
 }

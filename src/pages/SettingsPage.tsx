@@ -6,14 +6,14 @@ import { Field } from '@/components/ui/Modal'
 import { money } from '@/lib/format'
 import { FX } from '@/data/seed'
 import { hasSupabase, supabase } from '@/lib/supabase'
-import { pullAll, pushAll } from '@/lib/sync'
+import { pullAll, pushAll, replaceRemote, resetRemote } from '@/lib/sync'
 import type { Currency } from '@/types'
 
 export default function SettingsPage() {
   const store = useStore()
   const { settings, updateSettings, resetDemoData, userId, userEmail, syncError, lastSynced, hydrate } = store
   const [saved, setSaved] = useState(false)
-  const [busy, setBusy] = useState<'push' | 'pull' | null>(null)
+  const [busy, setBusy] = useState<'push' | 'pull' | 'reset' | 'import' | null>(null)
   const [cloudMsg, setCloudMsg] = useState<string | null>(null)
 
   const flash = () => {
@@ -38,14 +38,39 @@ export default function SettingsPage() {
 
   const importJson = (file: File) => {
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.onload = async () => {
+      let data: any
       try {
-        const data = JSON.parse(String(reader.result))
-        useStore.setState(data)
-        flash()
+        data = JSON.parse(String(reader.result))
       } catch {
         alert('That file could not be read as a Thomas backup.')
+        return
       }
+      // A stray JSON file would otherwise be merged straight into the store.
+      const required = ['settings', 'accounts', 'transactions'] as const
+      const shaped =
+        data && typeof data === 'object' && !Array.isArray(data) &&
+        required.every((k) => k in data) &&
+        Array.isArray(data.accounts) && Array.isArray(data.transactions)
+      if (!shaped) {
+        alert('That file is not a Thomas backup — expected settings, accounts and transactions.')
+        return
+      }
+
+      useStore.setState(data)
+      setCloudMsg(null)
+      flash()
+
+      if (!userId) return
+      setBusy('import')
+      try {
+        await replaceRemote(useStore.getState(), userId)
+        setCloudMsg('Backup imported and pushed to Supabase.')
+        useStore.setState({ syncError: null, lastSynced: new Date().toISOString() })
+      } catch (e) {
+        useStore.setState({ syncError: e instanceof Error ? e.message : String(e) })
+      }
+      setBusy(null)
     }
     reader.readAsText(file)
   }
@@ -134,7 +159,11 @@ export default function SettingsPage() {
         </Card>
 
         <Card>
-          <CardHead title="Your Data" sub="Everything is stored locally in this browser" right={<Database size={16} className="text-slate-400" />} />
+          <CardHead
+            title="Your Data"
+            sub={userId ? 'Synced to Supabase, cached in this browser' : 'Stored locally in this browser'}
+            right={<Database size={16} className="text-slate-400" />}
+          />
           <div className="px-5 pb-5">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
               {counts.map(([label, n]) => (
@@ -157,19 +186,31 @@ export default function SettingsPage() {
               </label>
               <button
                 className="btn bg-rose-50 text-rose-700 hover:bg-rose-100"
-                onClick={() => {
-                  if (confirm('Reset all data back to the demo dataset? Your changes will be lost.')) {
-                    resetDemoData()
-                    flash()
+                disabled={busy !== null}
+                onClick={async () => {
+                  const where = userId ? 'in Supabase and in this browser' : 'in this browser'
+                  if (!confirm(`Reset all data back to the demo dataset ${where}? Your changes will be lost.`)) return
+                  resetDemoData()
+                  flash()
+                  if (!userId) return
+                  setBusy('reset'); setCloudMsg(null)
+                  try {
+                    await resetRemote(userId)
+                    hydrate(await pullAll())
+                    setCloudMsg('Data reset to the demo dataset.')
+                  } catch (e) {
+                    useStore.setState({ syncError: e instanceof Error ? e.message : String(e) })
                   }
+                  setBusy(null)
                 }}
               >
-                <RotateCcw size={15} /> Reset
+                {busy === 'reset' ? <Loader2 size={15} className="animate-spin" /> : <RotateCcw size={15} />} Reset
               </button>
             </div>
             <p className="text-[11.5px] text-slate-400 mt-3 leading-relaxed">
-              Data lives in this browser's local storage under <code className="text-[11px]">thomas-finance-v1</code>.
-              Export regularly if it matters — clearing site data wipes it.
+              {userId
+                ? 'Your rows live in Supabase; this browser keeps a local cache under thomas-finance-v1. Import and Reset apply to both.'
+                : "Data lives in this browser's local storage under thomas-finance-v1. Export regularly if it matters — clearing site data wipes it."}
             </p>
           </div>
         </Card>

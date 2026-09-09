@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowDownCircle, ArrowUpCircle, BarChart3, CalendarDays, LayoutGrid, Lightbulb, Pencil, Plus, Star, Target,
   Trash2, X,
@@ -7,11 +8,12 @@ import { useStore } from '@/store/useStore'
 import { Card, CardHead, PageHeader, Progress, StatCard, Empty } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, SingleBars, PALETTE } from '@/components/charts/Charts'
 import { TransactionModal } from '@/components/TransactionModal'
-import { fmtDate, money, pct, toBase } from '@/lib/format'
-import { CURRENT_MONTH, byAccount, byCategory, byMethod, inMonth, monthlySeries, totals } from '@/lib/selectors'
+import { fmtDate, money, monthLabel, pct, toBase } from '@/lib/format'
+import { CURRENT_MONTH, PREV_MONTH, byAccount, byCategory, byMethod, currentMonthLabel, inMonth, monthlySeries, seriesRange, totals } from '@/lib/selectors'
 import type { Transaction, TxnType } from '@/types'
 
 export function LedgerPage({ type }: { type: TxnType }) {
+  const nav = useNavigate()
   const isIncome = type === 'income'
   const { transactions, accounts, settings, removeTransaction } = useStore()
   const [tab, setTab] = useState<'overview' | 'category' | 'account' | 'trend'>('overview')
@@ -21,7 +23,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
   const [q, setQ] = useState('')
 
   const t = useMemo(() => totals(transactions), [transactions])
-  const prev = useMemo(() => totals(transactions, '2026-08'), [transactions])
+  const prev = useMemo(() => totals(transactions, PREV_MONTH), [transactions])
   const cats = useMemo(() => byCategory(transactions, type), [transactions, type])
   const accs = useMemo(() => byAccount(transactions, type, accounts), [transactions, accounts, type])
   const methods = useMemo(() => byMethod(transactions), [transactions])
@@ -32,9 +34,14 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
   const current = isIncome ? t.income : t.expenses
   const previous = isIncome ? prev.income : prev.expenses
+  const allTime = useMemo(
+    () => transactions.filter((x) => x.type === type).reduce((a, x) => a + toBase(x.amount, x.currency), 0),
+    [transactions, type],
+  )
   const delta = previous ? Math.round(((current - previous) / previous) * 100) : 0
   const target = isIncome ? settings.monthlyIncomeTarget : settings.monthlyBudget
   const avg = Math.round(series.reduce((a, m) => a + m.value, 0) / series.length)
+  const avgDelta = avg ? Math.round(((current - avg) / avg) * 100) : 0
   const top = cats[0]
 
   const rows = useMemo(
@@ -97,8 +104,8 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label={isIncome ? 'Total Income' : 'Total Expenses'}
-          value={money(current)}
+          label={isIncome ? 'Total Income (All Time)' : 'Total Expenses (All Time)'}
+          value={money(allTime)}
           icon={isIncome ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
           tint={accent}
           footer={
@@ -127,7 +134,12 @@ export function LedgerPage({ type }: { type: TxnType }) {
           value={money(avg)}
           icon={<BarChart3 size={20} />}
           tint="#8b5cf6"
-          footer={<span className="text-emerald-600 font-semibold">↑ 6% <span className="text-slate-400 font-normal">vs last 3 months</span></span>}
+          footer={
+            <span className={avgDelta >= 0 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>
+              {avgDelta >= 0 ? '↑' : '↓'} {Math.abs(avgDelta)}%{' '}
+              <span className="text-slate-400 font-normal">this month vs 9-month average</span>
+            </span>
+          }
         />
         <StatCard
           label={isIncome ? 'Highest Income Source' : 'Highest Expense Category'}
@@ -144,7 +156,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
             <Card className="xl:col-span-5">
               <CardHead title={isIncome ? 'Monthly Income Trend' : 'Monthly Expense Trend'} right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
               <div className="px-3 pb-4">
-                <SingleBars data={series} color={isIncome ? '#3b82f6' : '#3b82f6'} highlight="Sep" />
+                <SingleBars data={series} color="#3b82f6" highlight={monthLabel(CURRENT_MONTH)} />
               </div>
             </Card>
 
@@ -237,7 +249,17 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
             <div className="xl:col-span-4 space-y-4">
               <Card>
-                <CardHead title={isIncome ? 'Income Targets' : 'Budget Status'} right={<span className="text-[12px] font-semibold text-brand-600">Edit</span>} />
+                <CardHead
+                  title={isIncome ? 'Income Targets' : 'Budget Status'}
+                  right={
+                    <button
+                      onClick={() => nav(isIncome ? '/settings' : '/budget')}
+                      className="text-[12px] font-semibold text-brand-600 hover:text-brand-700 cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                  }
+                />
                 <div className="px-5 pb-5 flex items-center gap-4">
                   <Donut
                     data={[
@@ -276,9 +298,9 @@ export function LedgerPage({ type }: { type: TxnType }) {
                 <div className="px-5 pb-5 grid grid-cols-2 gap-2.5">
                   {[
                     { icon: <Plus size={15} />, label: isIncome ? 'Add Income' : 'Add Expense', action: () => { setEditing(null); setModal(true) } },
-                    { icon: <BarChart3 size={15} />, label: 'View Report', action: () => {} },
-                    { icon: <Target size={15} />, label: isIncome ? 'Set Target' : 'Set Budget', action: () => {} },
-                    { icon: <LayoutGrid size={15} />, label: 'Categories', action: () => {} },
+                    { icon: <BarChart3 size={15} />, label: 'View Report', action: () => nav('/reports') },
+                    { icon: <Target size={15} />, label: isIncome ? 'Set Target' : 'Set Budget', action: () => nav(isIncome ? '/settings' : '/budget') },
+                    { icon: <LayoutGrid size={15} />, label: 'Categories', action: () => setTab('category') },
                   ].map((a) => (
                     <button
                       key={a.label}
@@ -298,7 +320,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       {tab === 'category' && (
         <Card>
-          <CardHead title={`${isIncome ? 'Income' : 'Expenses'} by Category`} sub="September 2026" />
+          <CardHead title={`${isIncome ? 'Income' : 'Expenses'} by Category`} sub={currentMonthLabel()} />
           <div className="px-5 pb-5 space-y-4">
             {cats.map((c, i) => (
               <div key={c.name}>
@@ -317,7 +339,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       {tab === 'account' && (
         <Card>
-          <CardHead title={`${isIncome ? 'Income' : 'Expenses'} by Account`} sub="September 2026" />
+          <CardHead title={`${isIncome ? 'Income' : 'Expenses'} by Account`} sub={currentMonthLabel()} />
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full min-w-[520px]">
               <thead className="bg-slate-50/70">
@@ -348,9 +370,9 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       {tab === 'trend' && (
         <Card>
-          <CardHead title="Monthly Trend" sub="Jan – Sep 2026" />
+          <CardHead title="Monthly Trend" sub={seriesRange()} />
           <div className="px-3 pb-4">
-            <SingleBars data={series} color={accent} highlight="Sep" height={320} />
+            <SingleBars data={series} color={accent} highlight={monthLabel(CURRENT_MONTH)} height={320} />
           </div>
           <div className="px-5 pb-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[

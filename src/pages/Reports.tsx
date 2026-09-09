@@ -3,8 +3,8 @@ import { BarChart3, Download, FileText, Landmark, PieChart as PieIcon, StickyNot
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, PageHeader, Progress, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, PALETTE, TrendLine } from '@/components/charts/Charts'
-import { daysLeft, fmtDate, money, pct, toBase } from '@/lib/format'
-import { byCategory, byPerson, docStatus, loanSummary, monthPlan, monthlySeries, totals } from '@/lib/selectors'
+import { daysLeft, fmtDate, money, monthLabel, pct, toBase } from '@/lib/format'
+import { CURRENT_MONTH, byCategory, byPerson, docStatus, loanSummary, monthPlan, monthlySeries, seriesRange, totals } from '@/lib/selectors'
 
 type Tab = 'summary' | 'category' | 'loans' | 'documents' | 'notes'
 
@@ -73,14 +73,14 @@ export default function Reports() {
       {tab === 'summary' && (
         <>
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Income (Sep)" value={money(t.income)} icon={<BarChart3 size={20} />} tint="#22c55e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'income' && x.date.startsWith('2026-09')).length} entries</span>} />
-            <StatCard label="Expenses (Sep)" value={money(t.expenses)} icon={<BarChart3 size={20} />} tint="#f43f5e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'expense' && x.date.startsWith('2026-09')).length} entries</span>} />
+            <StatCard label={`Income (${monthLabel(CURRENT_MONTH)})`} value={money(t.income)} icon={<BarChart3 size={20} />} tint="#22c55e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'income' && x.date.startsWith(CURRENT_MONTH)).length} entries</span>} />
+            <StatCard label={`Expenses (${monthLabel(CURRENT_MONTH)})`} value={money(t.expenses)} icon={<BarChart3 size={20} />} tint="#f43f5e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'expense' && x.date.startsWith(CURRENT_MONTH)).length} entries</span>} />
             <StatCard label="Net Balance" value={money(t.net)} icon={<BarChart3 size={20} />} tint={t.net >= 0 ? '#3b82f6' : '#ef4444'} footer={<span className={t.net >= 0 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>{t.net >= 0 ? 'Surplus' : 'Deficit'} this month</span>} />
             <StatCard label="Savings Rate" value={`${t.income ? Math.round((t.net / t.income) * 100) : 0}%`} icon={<BarChart3 size={20} />} tint="#8b5cf6" footer={<Progress value={Math.max(0, t.net)} max={t.income || 1} color="#8b5cf6" height={5} />} />
           </div>
 
           <Card>
-            <CardHead title="Income, Expenses & Net Trend" sub="January – September 2026" />
+            <CardHead title="Income, Expenses & Net Trend" sub={seriesRange()} />
             <div className="px-3 pb-4"><TrendLine data={series} height={300} /></div>
           </Card>
 

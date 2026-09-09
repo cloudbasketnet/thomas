@@ -25,7 +25,8 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 
 export default function CalendarPage() {
   const { transactions, loans, bills, documents, notes } = useStore()
-  const [cursor, setCursor] = useState({ year: 2026, month: 8 }) // 8 = September
+  const now = new Date(TODAY + 'T00:00:00')
+  const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [filter, setFilter] = useState<'all' | Event['type']>('all')
 
   const events = useMemo<Event[]>(() => {
@@ -79,7 +80,7 @@ export default function CalendarPage() {
               <button onClick={() => move(-1)} className="h-8 w-8 grid place-items-center rounded-lg border border-[#e8edf5] text-slate-500 hover:bg-slate-50 cursor-pointer">
                 <ChevronLeft size={15} />
               </button>
-              <button onClick={() => setCursor({ year: 2026, month: 8 })} className="h-8 px-3 rounded-lg border border-[#e8edf5] text-[12px] font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">
+              <button onClick={() => setCursor({ year: now.getFullYear(), month: now.getMonth() })} className="h-8 px-3 rounded-lg border border-[#e8edf5] text-[12px] font-semibold text-slate-600 hover:bg-slate-50 cursor-pointer">
                 Today
               </button>
               <button onClick={() => move(1)} className="h-8 w-8 grid place-items-center rounded-lg border border-[#e8edf5] text-slate-500 hover:bg-slate-50 cursor-pointer">

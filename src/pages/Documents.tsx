@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, FileText, Plus, ShieldCheck, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileText, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
@@ -36,10 +36,7 @@ export default function Documents() {
         title="Documents"
         subtitle="Emirates ID, visa, licence, insurance — tracked with expiry reminders."
         actions={
-          <>
-            <button className="btn-ghost"><Upload size={15} /> Upload File</button>
-            <button className="btn-primary" onClick={() => setModal(true)}><Plus size={15} /> Add Document</button>
-          </>
+          <button className="btn-primary" onClick={() => setModal(true)}><Plus size={15} /> Add Document</button>
         }
       />
 

@@ -3,13 +3,38 @@ import { FX } from '@/data/seed'
 
 export const SYMBOL: Record<Currency, string> = { AED: 'AED', INR: '₹', USD: '$' }
 
-export function money(value: number, currency: Currency = 'AED', decimals = 0) {
+/**
+ * The currency aggregate figures are shown in. Everything is computed in AED
+ * internally; this only affects display. The store keeps it in step with
+ * settings.baseCurrency, and every money-rendering screen subscribes to the
+ * whole store, so switching it re-renders them.
+ */
+let BASE: Currency = 'AED'
+export function setBaseCurrency(c: Currency) {
+  BASE = c
+}
+export function getBaseCurrency() {
+  return BASE
+}
+
+function format(value: number, currency: Currency, decimals: number) {
   const n = Math.abs(value).toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
   const sign = value < 0 ? '-' : ''
   return currency === 'AED' ? `${sign}AED ${n}` : `${sign}${SYMBOL[currency]} ${n}`
+}
+
+/**
+ * Format an amount. Pass `currency` for a raw figure already in that currency
+ * (a single transaction, say). Omit it for an AED-denominated aggregate, which
+ * is then converted into the active base currency for display.
+ */
+export function money(value: number, currency?: Currency, decimals = 0) {
+  if (currency) return format(value, currency, decimals)
+  if (BASE === 'AED') return format(value, 'AED', decimals)
+  return format(convert(value, 'AED', BASE), BASE, BASE === 'INR' ? 0 : decimals)
 }
 
 export function compact(value: number) {
@@ -45,8 +70,26 @@ export function shortDate(iso: string) {
   return `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()]}`
 }
 
-/** App "today" — the seeded dataset lives in September 2026. */
-export const TODAY = '2026-09-09'
+/** Local calendar date as yyyy-MM-dd. Uses the device clock, not UTC, so the
+ *  day never flips early for users east of Greenwich. */
+export function todayISO(d: Date = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** App "today", resolved once per page load. */
+export const TODAY = todayISO()
+
+/** Shift a yyyy-MM key by n months, e.g. addMonths('2026-01', -1) -> '2025-12'. */
+export function addMonths(key: string, n: number) {
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Short month label ('Sep') for a yyyy-MM or yyyy-MM-dd key. */
+export function monthLabel(key: string) {
+  return MONTHS[Number(key.slice(5, 7)) - 1] ?? key
+}
 
 export function daysLeft(iso: string, from: string = TODAY) {
   const a = new Date(from + 'T00:00:00').getTime()

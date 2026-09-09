@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react'
 import { CopyPlus, Gauge, PiggyBank, Plus, Target, Trash2, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, PageHeader, Progress, StatCard, Empty } from '@/components/ui/Primitives'
 import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
 import { compact, money, pct } from '@/lib/format'
+import { budgetsWithSpend, currentMonthLabel, unbudgetedSpend } from '@/lib/selectors'
 
 export default function Budget() {
-  const { budgets, settings, addBudget, updateBudget, removeBudget, updateSettings } = useStore()
+  const { budgets: rawBudgets, transactions, settings, addBudget, updateBudget, removeBudget, updateSettings } = useStore()
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ name: '', icon: '📦', budget: '', color: '#3b82f6' })
+
+  // Spend is derived from this month's expenses, so recording one moves the bar.
+  const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
+  const unbudgeted = useMemo(() => unbudgetedSpend(transactions, rawBudgets), [transactions, rawBudgets])
 
   const totalBudget = budgets.reduce((a, b) => a + b.budget, 0)
   const totalSpent = budgets.reduce((a, b) => a + b.spent, 0)
@@ -82,7 +88,7 @@ export default function Budget() {
         </Card>
 
         <Card className="xl:col-span-4">
-          <CardHead title="Budget Progress" right={<span className="chip bg-slate-100 text-slate-500">This Month</span>} />
+          <CardHead title="Budget Progress" right={<span className="chip bg-slate-100 text-slate-500">{currentMonthLabel()}</span>} />
           <div className="px-5 pb-5 space-y-3.5">
             {budgets.map((b) => (
               <div key={b.id}>
@@ -103,7 +109,7 @@ export default function Budget() {
 
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
         <Card className="xl:col-span-8">
-          <CardHead title="Budget Categories" sub="Edit any budget amount inline" />
+          <CardHead title="Budget Categories" sub="Budget is editable; spent is calculated from this month's expenses" />
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full min-w-[640px]">
               <thead className="bg-slate-50/70">
@@ -128,13 +134,8 @@ export default function Budget() {
                         className="w-24 h-8 rounded-lg border border-transparent hover:border-slate-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 outline-none px-2 text-right font-bold tabular-nums bg-transparent"
                       />
                     </td>
-                    <td className="td text-right">
-                      <input
-                        type="number"
-                        value={b.spent}
-                        onChange={(e) => updateBudget(b.id, { spent: Number(e.target.value) || 0 })}
-                        className="w-24 h-8 rounded-lg border border-transparent hover:border-slate-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 outline-none px-2 text-right tabular-nums bg-transparent"
-                      />
+                    <td className="td text-right font-semibold tabular-nums text-slate-600">
+                      {b.spent.toLocaleString()}
                     </td>
                     <td className={`td text-right font-bold tabular-nums ${b.budget - b.spent < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                       {(b.budget - b.spent).toLocaleString()}
@@ -156,14 +157,19 @@ export default function Budget() {
             </table>
             {budgets.length === 0 && <Empty text="No budget categories yet." />}
           </div>
-          <div className="px-5 py-4 border-t border-[#f1f5f9]">
+          <div className="px-5 py-4 border-t border-[#f1f5f9] flex flex-wrap items-center gap-3">
             <button className="btn-soft" onClick={() => setModal(true)}><Plus size={14} /> Add Category</button>
+            {unbudgeted > 0 && (
+              <p className="text-[11.5px] text-slate-500">
+                <b className="text-slate-700">{money(unbudgeted)}</b> spent this month in categories no budget covers.
+              </p>
+            )}
           </div>
         </Card>
 
         <div className="xl:col-span-4 space-y-4">
           <Card>
-            <CardHead title="Monthly Budget" right={<span className="text-[12px] font-semibold text-brand-600">Edit</span>} />
+            <CardHead title="Monthly Budget" sub="Changes save as you type" />
             <div className="px-5 pb-5 space-y-3">
               <Field label="Total Budget (AED)">
                 <input
@@ -188,11 +194,16 @@ export default function Budget() {
               <button className="btn-ghost justify-start h-11" onClick={() => setModal(true)}><Plus size={15} /> Add Category</button>
               <button
                 className="btn-ghost justify-start h-11"
-                onClick={() => budgets.forEach((b) => updateBudget(b.id, { spent: 0 }))}
+                onClick={() => {
+                  const total = Number(settings.monthlyBudget) || 0
+                  if (!total || !budgets.length) return
+                  const share = Math.round(total / budgets.length)
+                  budgets.forEach((b) => updateBudget(b.id, { budget: share }))
+                }}
               >
-                <CopyPlus size={15} /> Reset Spent (New Month)
+                <CopyPlus size={15} /> Split Monthly Budget Evenly
               </button>
-              <button className="btn-ghost justify-start h-11"><Target size={15} /> Set Savings Goal</button>
+              <Link to="/goals" className="btn-ghost justify-start h-11"><Target size={15} /> Set Savings Goal</Link>
             </div>
           </Card>
         </div>

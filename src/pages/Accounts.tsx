@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Banknote, CreditCard, Landmark, Plus, Trash2, Wallet, PieChart, Pencil } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, Badge, PageHeader, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
-import { fmtDate, money } from '@/lib/format'
+import { TODAY, fmtDate, money } from '@/lib/format'
 import { accountTotals, inMonth } from '@/lib/selectors'
 import type { Account, AccountType, Currency } from '@/types'
 
@@ -20,6 +21,30 @@ export default function Accounts() {
   const [tab, setTab] = useState<'all' | AccountType>('all')
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
+  const [editBalances, setEditBalances] = useState(false)
+
+  /** Account list plus this month's movements, as a CSV statement. */
+  const downloadStatement = () => {
+    const rows = [
+      ['Account', 'Type', 'Details', 'Balance', 'Currency', 'Status'],
+      ...accounts.map((a) => [a.name, TYPE_LABEL[a.type], a.details, a.balance, a.currency, a.status]),
+      [],
+      ['Date', 'Description', 'Account', 'Type', 'Amount', 'Currency'],
+      ...[...inMonth(transactions)]
+        .sort((x, y) => y.date.localeCompare(x.date))
+        .map((t) => [
+          t.date, t.description, accounts.find((a) => a.id === t.accountId)?.name ?? '—',
+          t.type, t.amount, t.currency,
+        ]),
+    ]
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `thomas-accounts-${TODAY}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const totals = useMemo(() => accountTotals(accounts), [accounts])
   const list = accounts.filter((a) => (tab === 'all' ? true : a.type === tab))
@@ -76,8 +101,8 @@ export default function Accounts() {
           footer={<span className="text-slate-400">{accounts.filter((a) => a.type === 'card').length} cards</span>} />
         <StatCard label="Loans" value={money(totals.loan)} icon={<Banknote size={20} />} tint="#ef4444"
           footer={<span className="text-rose-500 font-semibold">↑ {accounts.filter((a) => a.type === 'loan').length} active loans</span>} />
-        <StatCard label="Total Balance" value={money(totals.total)} icon={<PieChart size={20} />} tint="#f59e0b"
-          footer={<span className="text-emerald-600 font-semibold">↑ +5.2% this month</span>} />
+        <StatCard label="Net Position" value={money(totals.net)} icon={<PieChart size={20} />} tint="#f59e0b"
+          footer={<span className="text-slate-400">Bank + cash, less cards and loans</span>} />
       </div>
 
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
@@ -123,7 +148,18 @@ export default function Accounts() {
                     </td>
                     <td className="td text-slate-500">{TYPE_LABEL[a.type]}</td>
                     <td className="td text-slate-500 font-mono text-[12px]">{a.details}</td>
-                    <td className="td text-right font-bold tabular-nums">{a.balance.toLocaleString()}</td>
+                    <td className="td text-right font-bold tabular-nums">
+                      {editBalances ? (
+                        <input
+                          type="number"
+                          value={a.balance}
+                          onChange={(e) => updateAccount(a.id, { balance: Number(e.target.value) || 0 })}
+                          className="w-28 h-8 rounded-lg border border-slate-200 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/10 outline-none px-2 text-right font-bold tabular-nums"
+                        />
+                      ) : (
+                        a.balance.toLocaleString()
+                      )}
+                    </td>
                     <td className="td text-slate-500">{a.currency}</td>
                     <td className="td"><Badge tone={statusTone(a.status)}>{a.status}</Badge></td>
                     <td className="td">
@@ -153,7 +189,7 @@ export default function Accounts() {
           <Card>
             <CardHead title="Account Balance Overview" />
             <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-4">
-              <Donut data={donut} colors={colors} size={165} centerValue={money(totals.total)} centerLabel="Total Balance" />
+              <Donut data={donut} colors={colors} size={165} centerValue={money(totals.total)} centerLabel="Gross Holdings" />
               <div className="flex-1 w-full">
                 <DonutLegend data={donut} total={totals.total} colors={colors} showValue={false} />
               </div>
@@ -183,10 +219,10 @@ export default function Accounts() {
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { icon: '📄', title: 'Account Statements', desc: 'Download your account statements and transaction history.', btn: 'Download Statements', color: '#10b981' },
-          { icon: '🔄', title: 'Update Balances', desc: 'Manually update account balances across all accounts.', btn: 'Update All Balances', color: '#3b82f6' },
-          { icon: '🏦', title: 'Manage Loans', desc: 'View and manage your loan accounts and payments.', btn: 'View Loans', color: '#8b5cf6' },
-          { icon: '📊', title: 'Reports', desc: 'View spending and account reports with detailed insights.', btn: 'View Reports', color: '#f59e0b' },
+          { icon: '📄', title: 'Account Statements', desc: 'Download your accounts and this month’s transactions as CSV.', btn: 'Download Statements', color: '#10b981', onClick: downloadStatement },
+          { icon: '🔄', title: 'Update Balances', desc: 'Edit every account balance inline in the table above.', btn: editBalances ? 'Done Editing' : 'Update All Balances', color: '#3b82f6', onClick: () => setEditBalances((v) => !v) },
+          { icon: '🏦', title: 'Manage Loans', desc: 'View and manage your loan accounts and payments.', btn: 'View Loans', color: '#8b5cf6', to: '/loans' },
+          { icon: '📊', title: 'Reports', desc: 'View spending and account reports with detailed insights.', btn: 'View Reports', color: '#f59e0b', to: '/reports' },
         ].map((c) => (
           <Card key={c.title} className="card-pad">
             <span className="h-10 w-10 rounded-xl grid place-items-center text-[18px] mb-3" style={{ background: `${c.color}1a` }}>
@@ -194,12 +230,23 @@ export default function Accounts() {
             </span>
             <p className="text-[13.5px] font-bold text-slate-800">{c.title}</p>
             <p className="text-[11.5px] text-slate-500 mt-1 leading-relaxed min-h-[32px]">{c.desc}</p>
-            <button
-              className="mt-3 h-9 w-full rounded-xl text-white text-[12px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition cursor-pointer"
-              style={{ background: c.color }}
-            >
-              {c.btn} →
-            </button>
+            {c.to ? (
+              <Link
+                to={c.to}
+                className="mt-3 h-9 w-full rounded-xl text-white text-[12px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition"
+                style={{ background: c.color }}
+              >
+                {c.btn} →
+              </Link>
+            ) : (
+              <button
+                onClick={c.onClick}
+                className="mt-3 h-9 w-full rounded-xl text-white text-[12px] font-bold inline-flex items-center justify-center gap-1.5 hover:opacity-90 transition cursor-pointer"
+                style={{ background: c.color }}
+              >
+                {c.btn} →
+              </button>
+            )}
           </Card>
         ))}
       </div>

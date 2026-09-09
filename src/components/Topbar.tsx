@@ -24,6 +24,8 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   const [open, setOpen] = useState(false)
   const [bellOpen, setBellOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const bellRef = useRef<HTMLDivElement>(null)
+  const userRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,6 +38,27 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+
+  // Close the notification and account menus when clicking away or pressing Escape.
+  useEffect(() => {
+    if (!bellOpen && !userOpen) return
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (bellOpen && !bellRef.current?.contains(target)) setBellOpen(false)
+      if (userOpen && !userRef.current?.contains(target)) setUserOpen(false)
+    }
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setBellOpen(false)
+      setUserOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onEsc)
+    }
+  }, [bellOpen, userOpen])
 
   const hits = useMemo<Hit[]>(() => {
     const term = q.trim().toLowerCase()
@@ -142,7 +165,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
             className="relative h-10 w-10 grid place-items-center rounded-xl border border-[#e2e8f0] bg-white text-slate-500 hover:bg-slate-50 cursor-pointer"
@@ -173,7 +196,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
                     }}
                     className="w-full text-left flex gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer"
                   >
-                    <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 bg-${a.tone}-500`} style={{ background: a.tone === 'rose' ? '#f43f5e' : '#f59e0b' }} />
+                    <span className="mt-1.5 h-2 w-2 rounded-full shrink-0" style={{ background: a.tone === 'rose' ? '#f43f5e' : '#f59e0b' }} />
                     <span className="text-[12px] text-slate-600 leading-snug">{a.text}</span>
                   </button>
                 ))}
@@ -182,7 +205,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative" ref={userRef}>
           <button
             onClick={() => setUserOpen((v) => !v)}
             className="flex items-center gap-2.5 h-10 pl-1.5 pr-3 rounded-xl border border-[#e2e8f0] bg-white hover:bg-slate-50 cursor-pointer"

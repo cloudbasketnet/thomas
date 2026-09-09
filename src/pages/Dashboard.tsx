@@ -2,28 +2,29 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ArrowDownCircle, ArrowLeftRight, ArrowUpCircle, BarChart3, FileText, Landmark, Plus,
-  Sparkles, StickyNote, Upload, Users, Wallet, PieChart as PieIcon, X,
+  Receipt, Sparkles, StickyNote, Users, Wallet, PieChart as PieIcon, X,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, Badge, Progress, StatCard, ViewAll, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, IncomeExpenseBars } from '@/components/charts/Charts'
 import { TransactionModal } from '@/components/TransactionModal'
-import { convert, daysLeft, fmtDate, greeting, money, pct } from '@/lib/format'
-import { byPerson, docStatus, liquidBalance, loanSummary, monthPlan, monthlySeries, totals } from '@/lib/selectors'
+import { TODAY, convert, daysLeft, fmtDate, greeting, money, pct } from '@/lib/format'
+import { PREV_MONTH, budgetsWithSpend, byPerson, currentMonthLabel, docStatus, liquidBalance, loanSummary, monthPlan, monthlySeries, totals } from '@/lib/selectors'
 import type { Currency, TxnType } from '@/types'
 
 export default function Dashboard() {
-  const { settings, transactions, accounts, budgets, loans, documents, notes, goals, bills } = useStore()
+  const { settings, transactions, accounts, budgets: rawBudgets, loans, documents, notes, goals, bills } = useStore()
   const [modal, setModal] = useState<TxnType | null>(null)
   const [tipOpen, setTipOpen] = useState(true)
   const [noteFilter, setNoteFilter] = useState('All')
 
   const t = useMemo(() => totals(transactions), [transactions])
-  const prev = useMemo(() => totals(transactions, '2026-08'), [transactions])
+  const prev = useMemo(() => totals(transactions, PREV_MONTH), [transactions])
   const series = useMemo(() => monthlySeries(transactions), [transactions])
   const persons = useMemo(() => byPerson(transactions), [transactions])
   const plan = useMemo(() => monthPlan(transactions, loans, bills), [transactions, loans, bills])
   const ls = useMemo(() => loanSummary(loans), [loans])
+  const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
 
   const balance = liquidBalance(accounts)
   const netDelta = prev.net ? Math.round(((t.net - prev.net) / Math.abs(prev.net)) * 100) : 0
@@ -42,7 +43,7 @@ export default function Dashboard() {
           <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             {greeting()}, {settings.userName} <span className="animate-pulse">👋</span>
           </h1>
-          <p className="text-[13px] text-slate-500 mt-1">Here's your financial overview for September 2026.</p>
+          <p className="text-[13px] text-slate-500 mt-1">Here's your financial overview for {currentMonthLabel()}.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button className="btn-green" onClick={() => setModal('income')}>
@@ -51,8 +52,8 @@ export default function Dashboard() {
           <button className="btn-rose" onClick={() => setModal('expense')}>
             <Plus size={15} /> Add Expense
           </button>
-          <Link to="/purchases" className="btn-ghost">
-            <Upload size={15} /> Upload Bill
+          <Link to="/bills" className="btn-ghost">
+            <Receipt size={15} /> Manage Bills
           </Link>
         </div>
       </div>
@@ -496,7 +497,7 @@ function CurrencyConverter() {
           </div>
         </div>
         <p className="text-[11px] text-slate-400 text-center">
-          1 {from} = {rate.toLocaleString('en-US', { maximumFractionDigits: 4 })} {to} · Updated {fmtDate('2026-09-08')}
+          1 {from} = {rate.toLocaleString('en-US', { maximumFractionDigits: 4 })} {to} · Updated {fmtDate(TODAY)}
         </p>
       </div>
     </Card>

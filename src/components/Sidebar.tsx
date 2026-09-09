@@ -102,11 +102,15 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             </div>
           </div>
           <p className="text-[11px] text-white/85 leading-relaxed mb-3">
-            Ask me anything about your money, bills, loans or plans.
+            See what this month needs across bills, loans and goals.
           </p>
-          <button className="w-full h-9 rounded-xl bg-white text-brand-700 text-[12px] font-bold hover:bg-white/90 transition cursor-pointer inline-flex items-center justify-center gap-1.5">
-            <Bell size={13} /> Chat with Thomas
-          </button>
+          <NavLink
+            to="/reports"
+            onClick={onNavigate}
+            className="w-full h-9 rounded-xl bg-white text-brand-700 text-[12px] font-bold hover:bg-white/90 transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+          >
+            <Bell size={13} /> View Money Plan
+          </NavLink>
         </div>
         <div className="mt-3 rounded-2xl bg-slate-900 p-4 text-center">
           <LayoutGrid size={16} className="mx-auto text-brand-300 mb-1.5" />

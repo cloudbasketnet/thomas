@@ -6,7 +6,7 @@ import type {
 import {
   ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, PURCHASES, SETTINGS, TRANSACTIONS,
 } from '@/data/seed'
-import { uid } from '@/lib/format'
+import { setBaseCurrency, uid } from '@/lib/format'
 import { hasSupabase } from '@/lib/supabase'
 import { deleteRow, upsertRow, upsertSettings, type RemoteData } from '@/lib/sync'
 import type { Collection } from '@/lib/mappers'
@@ -89,6 +89,8 @@ interface State {
   removePriceWatch: (id: string) => void
 
   resetDemoData: () => void
+  /** Wipe locally cached rows back to the seed set (used on sign-out). */
+  clearLocalData: () => void
 }
 
 const seedState = () => ({
@@ -158,7 +160,8 @@ export const useStore = create<State>()(
       lastSynced: null,
 
       setSession: (userId, userEmail) => set({ userId, userEmail }),
-      hydrate: (data) =>
+      hydrate: (data) => {
+        setBaseCurrency(data.settings.baseCurrency)
         set({
           settings: data.settings,
           accounts: data.accounts,
@@ -174,12 +177,14 @@ export const useStore = create<State>()(
           priceWatch: data.priceWatch,
           lastSynced: new Date().toISOString(),
           syncError: null,
-        }),
+        })
+      },
       setSyncing: (syncing) => set({ syncing }),
       setSyncError: (syncError) => set({ syncError }),
 
       updateSettings: (patch) => {
         const settings = { ...get().settings, ...patch }
+        setBaseCurrency(settings.baseCurrency)
         set({ settings })
         if (cloudOn()) upsertSettings(settings, get().userId!).then(ok, fail)
       },
@@ -345,9 +350,16 @@ export const useStore = create<State>()(
       },
 
       resetDemoData: () => set(seedState()),
+      clearLocalData: () => {
+        setBaseCurrency(SETTINGS.baseCurrency)
+        set(seedState())
+      },
     }),
     {
       name: 'thomas-finance-v1',
+      onRehydrateStorage: () => (state) => {
+        if (state) setBaseCurrency(state.settings.baseCurrency)
+      },
       // Session fields are owned by Supabase auth, never by localStorage.
       partialize: (s) => {
         const { userId, userEmail, syncing, syncError, lastSynced, ...data } = s

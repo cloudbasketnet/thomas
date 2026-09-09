@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react'
 import { Check, Lightbulb, Plus, ShoppingCart, Sparkles, Trash2, Wallet } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
-import { money, pct, TODAY } from '@/lib/format'
-import { totals } from '@/lib/selectors'
+import { money, pct, shortDate, TODAY } from '@/lib/format'
+import { budgetsWithSpend, totals } from '@/lib/selectors'
 import { uid } from '@/lib/format'
 
 interface Item {
@@ -37,7 +37,7 @@ function loadList(): Item[] {
 }
 
 export default function Shopping() {
-  const { budgets, transactions, priceWatch } = useStore()
+  const { budgets: rawBudgets, transactions, priceWatch } = useStore()
   const [items, setItems] = useState<Item[]>(loadList)
   const [form, setForm] = useState({ name: '', qty: '1', price: '', category: 'Groceries' })
 
@@ -55,6 +55,7 @@ export default function Shopping() {
   const boughtTotal = items.filter((i) => i.bought).reduce((a, i) => a + lineTotal(i), 0)
   const pendingTotal = cartTotal - boughtTotal
 
+  const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
   const grocery = budgets.find((b) => b.name.toLowerCase().includes('grocer'))
   const groceryLeft = grocery ? grocery.budget - grocery.spent : 0
   const t = useMemo(() => totals(transactions), [transactions])
@@ -208,7 +209,7 @@ export default function Shopping() {
           <div className="card px-5 py-4 flex items-start gap-3 bg-brand-50/50 border-brand-100">
             <Lightbulb size={17} className="text-brand-600 mt-0.5 shrink-0" />
             <p className="text-[12px] text-slate-600 leading-relaxed">
-              Shopping on {TODAY.slice(8)} Sep? Items you tick stay saved on this device, so you can build the list at
+              Shopping on {shortDate(TODAY)}? Items you tick stay saved on this device, so you can build the list at
               home and check it off in the store.
             </p>
           </div>

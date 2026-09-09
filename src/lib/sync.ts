@@ -112,3 +112,26 @@ export async function pushAll(state: any, userId: string) {
     if (error) throw error
   }
 }
+
+/** Delete every row this user owns, across all twelve tables. */
+export async function wipeRemote(userId: string): Promise<void> {
+  const client = db()
+  for (const c of COLLECTIONS) {
+    const { error } = await client.from(TABLES[c]).delete().eq('user_id', userId)
+    if (error) throw error
+  }
+  const { error } = await client.from('settings').delete().eq('user_id', userId)
+  if (error) throw error
+}
+
+/** Reset the account back to the demo dataset, in the cloud as well as locally. */
+export async function resetRemote(userId: string): Promise<void> {
+  await wipeRemote(userId)
+  await seedRemote(userId)
+}
+
+/** Replace everything in the cloud with the given local state. */
+export async function replaceRemote(state: any, userId: string): Promise<void> {
+  await wipeRemote(userId)
+  await pushAll(state, userId)
+}

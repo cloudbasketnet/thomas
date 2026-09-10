@@ -8,6 +8,7 @@ import { useStore } from '@/store/useStore'
 import { Card, CardHead, Badge, Progress, StatCard, ViewAll, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, IncomeExpenseBars } from '@/components/charts/Charts'
 import { TransactionModal } from '@/components/TransactionModal'
+import { InsightsPanel } from '@/components/InsightsPanel'
 import { TODAY, convert, daysLeft, fmtDate, greeting, money, pct } from '@/lib/format'
 import { PREV_MONTH, budgetsWithSpend, byPerson, currentMonthLabel, docStatus, liquidBalance, loanSummary, monthPlan, monthlySeries, totals } from '@/lib/selectors'
 import type { Currency, TxnType } from '@/types'
@@ -136,6 +137,8 @@ export default function Dashboard() {
           footer={<span className="text-slate-400">{ls.dueThisMonth.length} payments due</span>}
         />
       </div>
+
+      <InsightsPanel />
 
       {/* Charts row */}
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">

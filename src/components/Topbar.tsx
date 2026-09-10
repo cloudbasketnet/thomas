@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, CalendarDays, Check, ChevronDown, CloudOff, LogOut, Menu, Search, X } from 'lucide-react'
 import { useStore } from '@/store/useStore'
+import { hardWarnings } from '@/lib/insights'
 import { fmtDate, money, daysLeft } from '@/lib/format'
 import { docStatus } from '@/lib/selectors'
 import { hasSupabase, supabase } from '@/lib/supabase'
@@ -83,8 +84,22 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     return out.slice(0, 8)
   }, [q, transactions, accounts, documents, notes, loans])
 
+  const { settings: cfg, budgets, transactions: txns, analysis } = useStore()
+
   const alerts = useMemo(() => {
     const items: { text: string; tone: string; to: string }[] = []
+
+    // Facts first: over-budget lines and overdue items, computed locally.
+    for (const w of hardWarnings(txns, budgets, bills, loans, cfg)) {
+      items.push({ text: `${w.title} — ${w.detail}`, tone: 'rose', to: '/budget' })
+    }
+
+    // Then anything the AI analysis flagged as a warning.
+    for (const i of analysis?.insights ?? []) {
+      if (i.kind !== 'warning') continue
+      items.push({ text: `${i.title} — ${i.detail}`, tone: 'rose', to: '/' })
+    }
+
     for (const d of documents) {
       const st = docStatus(d.expiry)
       if (st !== 'Valid')
@@ -96,7 +111,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     for (const b of bills)
       if (b.status === 'Overdue') items.push({ text: `${b.name} bill is overdue`, tone: 'rose', to: '/bills' })
     return items
-  }, [documents, loans, bills])
+  }, [documents, loans, bills, txns, budgets, cfg, analysis])
 
   return (
     <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-[#e8edf5]">

@@ -9,6 +9,7 @@ import {
 } from '@/data/seed'
 import { setBaseCurrency, uid } from '@/lib/format'
 import { DEFAULT_CATEGORIES } from '@/data/categories'
+import type { Analysis } from '@/lib/gemini'
 import { hasSupabase } from '@/lib/supabase'
 import { deleteRow, upsertRow, upsertSettings, type RemoteData } from '@/lib/sync'
 import type { Collection } from '@/lib/mappers'
@@ -30,6 +31,14 @@ interface State {
   subcategories: Subcategory[]
 
   // ---- cloud session
+  // ---- AI spending analysis (cached; regenerated on demand)
+  analysis: Analysis | null
+  analysing: boolean
+  analysisError: string | null
+  setAnalysis: (a: Analysis | null) => void
+  setAnalysing: (v: boolean) => void
+  setAnalysisError: (msg: string | null) => void
+
   userId: string | null
   userEmail: string | null
   syncing: boolean
@@ -165,6 +174,13 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       ...seedState(),
+
+      analysis: null,
+      analysing: false,
+      analysisError: null,
+      setAnalysis: (analysis) => set({ analysis, analysisError: null }),
+      setAnalysing: (analysing) => set({ analysing }),
+      setAnalysisError: (analysisError) => set({ analysisError, analysing: false }),
 
       userId: null,
       userEmail: null,
@@ -402,7 +418,7 @@ export const useStore = create<State>()(
       clearAllData: () => set(seedState()),
       clearLocalData: () => {
         setBaseCurrency(SETTINGS.baseCurrency)
-        set(seedState())
+        set({ ...seedState(), analysis: null, analysisError: null })
       },
     }),
     {
@@ -412,8 +428,9 @@ export const useStore = create<State>()(
       },
       // Session fields are owned by Supabase auth, never by localStorage.
       partialize: (s) => {
-        const { userId, userEmail, syncing, syncError, lastSynced, ...data } = s
+        const { userId, userEmail, syncing, syncError, lastSynced, analysing, analysisError, ...data } = s
         void userId; void userEmail; void syncing; void syncError; void lastSynced
+        void analysing; void analysisError
         return data
       },
     },

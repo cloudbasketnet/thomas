@@ -103,6 +103,29 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 /**
+ * Google returns how long to wait in a RetryInfo detail, e.g. "5.5s". Honour
+ * it — the free tier allows only a handful of requests per minute, and a
+ * shorter fixed backoff just burns the remaining attempts.
+ */
+function retryDelayMs(error: any, attempt: number) {
+  const info = (error?.details ?? []).find((d: any) => String(d['@type'] ?? '').endsWith('RetryInfo'))
+  const seconds = Number(String(info?.retryDelay ?? '').replace('s', ''))
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds * 1000 + 250, 30_000)
+  return (attempt + 1) * 1500
+}
+
+/** Turn Google's wording into something a user can act on. */
+function friendlyError(status: number, message: string) {
+  if (status === 429) {
+    return message.includes('free_tier')
+      ? 'Gemini’s free tier allows only a few requests a minute and that limit was just hit. Wait a moment and try again.'
+      : `Rate limited by Gemini. ${message}`
+  }
+  if (status === 503) return 'Gemini is busy right now. Try again in a moment.'
+  return message
+}
+
+/**
  * Send a bill image to Gemini and get its line items back.
  * The API returns 503 under load often enough to be worth retrying.
  */
@@ -116,8 +139,6 @@ export async function scanBill(dataUrl: string, mimeType: string, signal?: Abort
 
   let lastError = ''
   for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt) await sleep(attempt * 1500)
-
     const res = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -134,10 +155,127 @@ export async function scanBill(dataUrl: string, mimeType: string, signal?: Abort
     }
 
     const detail = await res.json().catch(() => null)
-    lastError = detail?.error?.message ?? `Request failed (${res.status})`
+    const raw = detail?.error?.message ?? `Request failed (${res.status})`
+    lastError = friendlyError(res.status, raw)
 
     // 503 is transient overload; 429 is rate limiting. Both are worth retrying.
     if (res.status !== 503 && res.status !== 429) break
+    if (attempt < 2) await sleep(retryDelayMs(detail?.error, attempt))
+  }
+
+  throw new Error(lastError || 'Gemini could not be reached.')
+}
+
+
+// ---------------------------------------------------------------------------
+// Spending analysis
+// ---------------------------------------------------------------------------
+
+export type InsightKind = 'warning' | 'watch' | 'good'
+
+export interface Insight {
+  kind: InsightKind
+  title: string
+  detail: string
+  /** The figure the point rests on, e.g. "AED 2,400 over budget". */
+  metric?: string
+  /** One concrete thing to do about it. */
+  action?: string
+}
+
+export interface Analysis {
+  /** One sentence on what is happening right now. */
+  headline: string
+  /** Where the month lands if nothing changes. */
+  outlook: string
+  insights: Insight[]
+  /** When this was produced, so the UI can say how stale it is. */
+  generatedAt: string
+}
+
+const ANALYSIS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    headline: { type: 'STRING', description: 'One sentence on what is happening with spending right now.' },
+    outlook: { type: 'STRING', description: 'Where the month ends up if the current rate continues. Cite the projected figure.' },
+    insights: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          kind: { type: 'STRING', enum: ['warning', 'watch', 'good'] },
+          title: { type: 'STRING', description: 'Six words or fewer.' },
+          detail: { type: 'STRING', description: 'One or two sentences, citing the actual numbers.' },
+          metric: { type: 'STRING', description: 'The key figure, formatted with its currency.' },
+          action: { type: 'STRING', description: 'One concrete step. Omit for good news.' },
+        },
+        required: ['kind', 'title', 'detail'],
+      },
+    },
+  },
+  required: ['headline', 'outlook', 'insights'],
+}
+
+const ANALYSIS_PROMPT = `You are a careful personal finance analyst reviewing one month of a
+single person's own records. The JSON below is their real data.
+
+Produce:
+- headline: one sentence on what is actually happening with their spending.
+- outlook: what the month looks like at this rate. Use projectedSpend and say
+  plainly whether it lands over or under budget, and by how much.
+- insights: between 3 and 6 points. Include at least one "good" when the data
+  supports one, and mark genuine problems "warning". Use "watch" for things
+  that are not yet a problem but are heading that way.
+
+Rules that matter:
+- Every claim must come from the numbers given. Cite them. Never invent a
+  figure, a category or a merchant that is not in the data.
+- Amounts are already in the base currency; write them with that currency code.
+- daysElapsed of daysInMonth have passed. Early in a month a high projection is
+  less certain — say so rather than alarming them over three days of data.
+- If income is 0 they may simply not have recorded it yet. Do not conclude they
+  have no income; note the gap instead.
+- A category with no budget set is not overspending, it is unbudgeted.
+- Be specific and brief. No generic advice like "make a budget" or "track your
+  spending" — they already are. No greetings, no filler, no emoji.
+- Address them as "you".`
+
+/** Ask Gemini to read the snapshot and report what it sees. */
+export async function analyseFinances(snapshot: unknown, signal?: AbortSignal): Promise<Analysis> {
+  if (!KEY) throw new Error('No Gemini API key — set GEMINI_API_KEY (or VITE_GEMINI_API_KEY) and rebuild.')
+
+  const body = {
+    contents: [{ parts: [{ text: `${ANALYSIS_PROMPT}\n\nDATA:\n${JSON.stringify(snapshot)}` }] }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: ANALYSIS_SCHEMA, temperature: 0.2 },
+  }
+
+  let lastError = ''
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const res = await fetch(`${ENDPOINT}/${MODEL}:generateContent?key=${KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal,
+    })
+
+    if (res.ok) {
+      const json = await res.json()
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text
+      if (!text) throw new Error('Gemini returned no analysis.')
+      const parsed = JSON.parse(text) as Analysis
+      return {
+        headline: parsed.headline ?? '',
+        outlook: parsed.outlook ?? '',
+        insights: Array.isArray(parsed.insights) ? parsed.insights.filter((i) => i && i.title) : [],
+        generatedAt: new Date().toISOString(),
+      }
+    }
+
+    const detail = await res.json().catch(() => null)
+    const raw = detail?.error?.message ?? `Request failed (${res.status})`
+    lastError = friendlyError(res.status, raw)
+    if (res.status !== 503 && res.status !== 429) break
+    if (attempt < 2) await sleep(retryDelayMs(detail?.error, attempt))
   }
 
   throw new Error(lastError || 'Gemini could not be reached.')

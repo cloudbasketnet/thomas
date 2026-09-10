@@ -3,7 +3,7 @@ import { AlertCircle, Check, FileText, Loader2, ScanLine, Trash2, Upload } from 
 import { Modal, Field } from '@/components/ui/Modal'
 import { PURCHASE_CATEGORIES, readFileAsDataUrl, scanBill, type ScannedItem } from '@/lib/gemini'
 import { money, TODAY } from '@/lib/format'
-import type { Account, Currency, Transaction } from '@/types'
+import { WEIGHT_UNITS, type Account, type Currency, type Transaction, type WeightUnit } from '@/types'
 
 const METHODS = ['Bank Transfer', 'Cash', 'Card', 'Credit Card', 'Cheque', 'Auto Debit', 'Online']
 const MAX_MB = 8
@@ -91,6 +91,10 @@ export function BillScanModal({
           category: (PURCHASE_CATEGORIES as readonly string[]).includes(it.category) ? it.category : 'Other',
           qty: Number(it.qty) || 1,
           price: Number(it.price) || 0,
+          weight: Number(it.weight) > 0 ? Number(it.weight) : undefined,
+          weightUnit: (WEIGHT_UNITS as string[]).includes(it.weightUnit ?? '')
+            ? (it.weightUnit as WeightUnit)
+            : undefined,
         })),
       )
       if (!bill.items?.length) setError('No line items were found on that image. Try a sharper, straight-on photo.')
@@ -123,6 +127,8 @@ export function BillScanModal({
         method,
         store: meta.store.trim() || undefined,
         qty: r.qty,
+        weight: r.weight,
+        weightUnit: r.weight ? ((r.weightUnit as WeightUnit) ?? 'kg') : undefined,
         notes: `Scanned from ${file?.name ?? 'a bill'}`,
       })
     }
@@ -258,6 +264,7 @@ export function BillScanModal({
                     <th className="th">Category</th>
                     <th className="th text-right w-20">Qty</th>
                     <th className="th text-right w-28">Unit price</th>
+                    <th className="th text-right w-32">Weight</th>
                     <th className="th w-10"></th>
                   </tr>
                 </thead>
@@ -306,6 +313,29 @@ export function BillScanModal({
                           value={r.price}
                           onChange={(e) => patch(r.id, { price: Number(e.target.value) || 0 })}
                         />
+                      </td>
+                      <td className="td">
+                        <div className="flex items-center gap-1">
+                          <input
+                            className="input h-8 text-[12.5px] text-right w-16"
+                            type="number"
+                            step="0.001"
+                            placeholder="—"
+                            value={r.weight ?? ''}
+                            onChange={(e) =>
+                              patch(r.id, { weight: e.target.value === '' ? undefined : Number(e.target.value) })
+                            }
+                          />
+                          <select
+                            className="input h-8 text-[12px] w-16 px-1"
+                            value={r.weightUnit ?? 'kg'}
+                            onChange={(e) => patch(r.id, { weightUnit: e.target.value })}
+                          >
+                            {WEIGHT_UNITS.map((u) => (
+                              <option key={u}>{u}</option>
+                            ))}
+                          </select>
+                        </div>
                       </td>
                       <td className="td">
                         <button

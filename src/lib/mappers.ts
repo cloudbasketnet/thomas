@@ -54,6 +54,7 @@ export const MAPPERS: {
       person: t.person ?? null, method: t.method ?? null, notes: t.notes ?? null,
       store: t.store ?? null, qty: t.qty ?? null, warranty_months: t.warrantyMonths ?? null,
       subcategory: t.subcategory ?? null,
+      weight: t.weight ?? null, weight_unit: t.weightUnit ?? null,
     }),
     from: (r): Transaction => ({
       id: r.id, type: r.type, date: r.date, description: r.description, category: r.category,
@@ -63,6 +64,8 @@ export const MAPPERS: {
       qty: r.qty == null ? undefined : num(r.qty),
       warrantyMonths: r.warranty_months == null ? undefined : num(r.warranty_months),
       subcategory: r.subcategory ?? undefined,
+      weight: r.weight == null ? undefined : num(r.weight),
+      weightUnit: r.weight_unit ?? undefined,
     }),
   },
 

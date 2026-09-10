@@ -40,7 +40,14 @@ export interface Transaction {
   warrantyMonths?: number
   /** Narrower classification within `category`, e.g. Groceries → Rice. */
   subcategory?: string
+  /** How much product was bought, in `weightUnit`. Independent of `qty`. */
+  weight?: number
+  weightUnit?: WeightUnit
 }
+
+/** Units allowed for `Transaction.weight`, matching the database constraint. */
+export type WeightUnit = 'kg' | 'g' | 'lb' | 'oz' | 'L' | 'ml'
+export const WEIGHT_UNITS: WeightUnit[] = ['kg', 'g', 'lb', 'oz', 'L', 'ml']
 
 export interface BudgetCategory {
   id: string

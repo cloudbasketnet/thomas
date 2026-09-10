@@ -51,16 +51,18 @@ export default function ExpenseReport() {
     const term = q.trim().toLowerCase()
     if (term.length < 2) return rows
     return rows.filter((r) =>
-      `${r.description} ${r.category} ${r.store ?? ''} ${r.person ?? ''}`.toLowerCase().includes(term),
+      `${r.description} ${r.category} ${r.subcategory ?? ''} ${r.store ?? ''} ${r.person ?? ''}`
+        .toLowerCase()
+        .includes(term),
     )
   }, [rows, q])
 
   const exportCsv = () => {
     const out = [
-      ['Date', 'Item', 'Category', 'Store', 'Person', 'Method', 'Qty', 'Amount', 'Currency', 'Amount (AED)'],
+      ['Date', 'Item', 'Category', 'Sub-category', 'Store', 'Person', 'Method', 'Qty', 'Weight', 'Unit', 'Amount', 'Currency', 'Amount (AED)'],
       ...filtered.map((r) => [
-        r.date, r.description, r.category, r.store ?? '', r.person ?? '', r.method ?? '',
-        r.qty ?? '', r.amount, r.currency, Math.round(r.aed * 100) / 100,
+        r.date, r.description, r.category, r.subcategory ?? '', r.store ?? '', r.person ?? '', r.method ?? '',
+        r.qty ?? '', r.weight ?? '', r.weightUnit ?? '', r.amount, r.currency, Math.round(r.aed * 100) / 100,
       ]),
     ]
     const csv = out.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n')
@@ -330,6 +332,7 @@ export default function ExpenseReport() {
                   <th className="th">Account</th>
                   <th className="th">Person</th>
                   <th className="th text-right">Qty</th>
+                  <th className="th text-right">Weight</th>
                   <th className="th text-right">Amount</th>
                   <th className="th text-right">Actions</th>
                 </tr>
@@ -339,11 +342,23 @@ export default function ExpenseReport() {
                   <tr key={r.id} className="row-hover">
                     <td className="td text-slate-500 whitespace-nowrap">{fmtDate(r.date)}</td>
                     <td className="td font-semibold text-slate-800">{r.description}</td>
-                    <td className="td text-slate-500">{r.category}</td>
+                    <td className="td text-slate-500">
+                      {r.category}
+                      {r.subcategory ? <span className="text-slate-400"> · {r.subcategory}</span> : null}
+                    </td>
                     <td className="td text-slate-500">{r.store ?? '—'}</td>
                     <td className="td text-slate-500">{accountName(r.accountId)}</td>
                     <td className="td text-slate-500">{r.person ?? 'Me'}</td>
                     <td className="td text-right tabular-nums text-slate-500">{r.qty ?? '—'}</td>
+                    <td className="td text-right tabular-nums text-slate-500 whitespace-nowrap">
+                      {r.weight ? (
+                        <span title={`${money(r.aed / r.weight)} per ${r.weightUnit}`}>
+                          {r.weight} {r.weightUnit}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="td text-right font-bold tabular-nums text-rose-600">{money(r.amount, r.currency)}</td>
                     <td className="td">
                       <div className="flex justify-end gap-1">

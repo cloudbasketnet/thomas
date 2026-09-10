@@ -33,6 +33,9 @@ export interface ScannedItem {
   qty: number
   /** Unit price, in the receipt's own currency. */
   price: number
+  /** Pack size read off the line, e.g. 10 for "Basmati Rice 10kg". */
+  weight?: number
+  weightUnit?: string
 }
 
 export interface ScannedBill {
@@ -59,6 +62,8 @@ const SCHEMA = {
           category: { type: 'STRING', enum: PURCHASE_CATEGORIES as unknown as string[] },
           qty: { type: 'NUMBER' },
           price: { type: 'NUMBER', description: 'Unit price: line total divided by qty' },
+          weight: { type: 'NUMBER', description: 'Pack size if the line states one, e.g. 10 for "Rice 10kg". Omit if absent.' },
+          weightUnit: { type: 'STRING', enum: ['kg', 'g', 'lb', 'oz', 'L', 'ml'] },
         },
         required: ['item', 'category', 'qty', 'price'],
       },
@@ -75,6 +80,9 @@ Extract every purchased line item. Rules:
 - date must be yyyy-MM-dd. Receipts are usually DD/MM/YYYY; read the day first
   unless that gives an impossible month.
 - If the currency is unclear, infer it from the merchant's country; default AED.
+- weight is the pack size printed on the line, per unit: "Basmati Rice 10kg"
+  is weight 10, weightUnit kg. Leave both out when the line states no size.
+  Never convert or estimate a size that is not written down.
 - If a field is genuinely unreadable, use an empty string for text and 0 for
   numbers. Never invent a value.`
 

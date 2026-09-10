@@ -6,7 +6,7 @@ import { useStore } from '@/store/useStore'
 import { hasGemini } from '@/lib/gemini'
 import { TODAY, fmtDate } from '@/lib/format'
 import { categoriesOf, findCategoryByName, statementFor, subcategoriesOf } from '@/lib/selectors'
-import type { Currency, Transaction, TxnType } from '@/types'
+import { WEIGHT_UNITS, type Currency, type Transaction, type TxnType, type WeightUnit } from '@/types'
 
 /** Used only until the user creates categories of their own. */
 const FALLBACK_INCOME = ['Salary', 'Business Income', 'Investment', 'Other Income']
@@ -48,6 +48,8 @@ export function TransactionModal({
     person: people[0]?.name ?? 'Me',
     method: METHODS[0],
     store: '',
+    weight: '',
+    weightUnit: 'kg' as WeightUnit,
     notes: '',
   }
   const [form, setForm] = useState(blank)
@@ -66,6 +68,8 @@ export function TransactionModal({
         person: editing.person ?? DEFAULT_PEOPLE[0],
         method: editing.method ?? METHODS[0],
         store: editing.store ?? '',
+        weight: editing.weight ? String(editing.weight) : '',
+        weightUnit: editing.weightUnit ?? 'kg',
         notes: editing.notes ?? '',
       })
     } else {
@@ -107,6 +111,8 @@ export function TransactionModal({
       person: form.person,
       method: form.method,
       store: form.store.trim() || undefined,
+      weight: Number(form.weight) > 0 ? Number(form.weight) : undefined,
+      weightUnit: Number(form.weight) > 0 ? form.weightUnit : undefined,
       notes: form.notes.trim() || undefined,
     }
     if (editing) updateTransaction(editing.id, payload)
@@ -311,14 +317,38 @@ export function TransactionModal({
 
           <div className="grid grid-cols-2 gap-4">
             {!isIncome && (
-              <Field label="Store (optional)">
-                <input
-                  className="input"
-                  value={form.store}
-                  onChange={(e) => set('store', e.target.value)}
-                  placeholder="e.g. Carrefour"
-                />
-              </Field>
+              <>
+                <Field label="Store (optional)">
+                  <input
+                    className="input"
+                    value={form.store}
+                    onChange={(e) => set('store', e.target.value)}
+                    placeholder="e.g. Carrefour"
+                  />
+                </Field>
+                <Field label="Weight (optional)">
+                  <div className="flex gap-2">
+                    <input
+                      className="input flex-1"
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={form.weight}
+                      onChange={(e) => set('weight', e.target.value)}
+                      placeholder="e.g. 10"
+                    />
+                    <select
+                      className="input w-20"
+                      value={form.weightUnit}
+                      onChange={(e) => set('weightUnit', e.target.value)}
+                    >
+                      {WEIGHT_UNITS.map((u) => (
+                        <option key={u}>{u}</option>
+                      ))}
+                    </select>
+                  </div>
+                </Field>
+              </>
             )}
             <Field label="Person" className={isIncome ? 'col-span-2' : ''}>
               <select className="input" value={form.person} onChange={(e) => set('person', e.target.value)}>

@@ -40,10 +40,10 @@ export default function Dashboard() {
       {/* Greeting + AI banner */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
+          <h1 className="text-[24px] font-extrabold tracking-tight text-slate-900 flex items-center gap-2">
             {greeting()}, {settings.userName} <span className="animate-pulse">👋</span>
           </h1>
-          <p className="text-[13px] text-slate-500 mt-1">Here's your financial overview for {currentMonthLabel()}.</p>
+          <p className="text-[12.5px] text-slate-500 mt-1">Here's your financial overview for {currentMonthLabel()}.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button className="btn-green" onClick={() => setModal('income')}>
@@ -87,7 +87,7 @@ export default function Dashboard() {
           footer={
             <span className={netDelta >= 0 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>
               {netDelta >= 0 ? '↑' : '↓'} {Math.abs(netDelta)}%{' '}
-              <span className="text-slate-400 font-normal">net vs last month</span>
+              <span className="text-slate-400 font-normal">vs last month</span>
             </span>
           }
         />
@@ -98,7 +98,7 @@ export default function Dashboard() {
           tint="#22c55e"
           footer={
             <div>
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+              <div className="flex justify-between gap-1 text-[9.5px] text-slate-400 mb-1 whitespace-nowrap">
                 <span>Target: {money(settings.monthlyIncomeTarget)}</span>
                 <span className="font-bold text-slate-500">{pct(t.income, settings.monthlyIncomeTarget)}%</span>
               </div>
@@ -113,7 +113,7 @@ export default function Dashboard() {
           tint="#f43f5e"
           footer={
             <div>
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+              <div className="flex justify-between gap-1 text-[9.5px] text-slate-400 mb-1 whitespace-nowrap">
                 <span>Budget: {money(settings.monthlyBudget)}</span>
                 <span className="font-bold text-slate-500">{pct(t.expenses, settings.monthlyBudget)}%</span>
               </div>

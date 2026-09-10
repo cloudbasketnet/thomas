@@ -20,12 +20,12 @@ export function CardHead({
   right?: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-5 pt-5 pb-3">
-      <div>
-        <h3 className="card-title">{title}</h3>
-        {sub && <p className="text-[12px] text-slate-500 mt-0.5">{sub}</p>}
+    <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+      <div className="min-w-0">
+        <h3 className="card-title leading-tight">{title}</h3>
+        {sub && <p className="text-[11.5px] text-slate-500 mt-0.5">{sub}</p>}
       </div>
-      {right}
+      {right && <div className="shrink-0">{right}</div>}
     </div>
   )
 }
@@ -94,8 +94,8 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
       <div>
-        <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900">{title}</h1>
-        {subtitle && <p className="text-[13px] text-slate-500 mt-1">{subtitle}</p>}
+        <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="text-[12.5px] text-slate-500 mt-1">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
     </div>
@@ -116,17 +116,21 @@ export function StatCard({
   footer?: ReactNode
 }) {
   return (
-    <div className="card card-pad flex items-start gap-3.5 hover:-translate-y-0.5 transition-transform duration-200">
+    <div className="card p-4 flex items-start gap-2.5 hover:-translate-y-0.5 transition-transform duration-200">
       <div
-        className="h-11 w-11 shrink-0 rounded-xl grid place-items-center"
+        className="h-9 w-9 shrink-0 rounded-xl grid place-items-center"
         style={{ background: `${tint}1a`, color: tint }}
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[12px] font-medium text-slate-500 truncate">{label}</p>
-        <p className="text-[21px] font-extrabold tracking-tight text-slate-900 mt-0.5">{value}</p>
-        {footer && <div className="mt-1.5 text-[11px]">{footer}</div>}
+        <p className="text-[11px] font-medium text-slate-500 truncate" title={label}>
+          {label}
+        </p>
+        <p className="text-[clamp(15px,1.35vw,20px)] font-extrabold tracking-tight text-slate-900 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+          {value}
+        </p>
+        {footer && <div className="mt-1.5 text-[10.5px] leading-snug">{footer}</div>}
       </div>
     </div>
   )

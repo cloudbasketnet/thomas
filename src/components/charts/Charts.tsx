@@ -139,8 +139,13 @@ export function Donut({
 }) {
   const outer = size / 2 - 6
   const empty = !hasValues(data, ['value'])
+  // Keep the centre label inside the hole rather than spilling over the ring.
+  const hole = outer * innerRatio * 2
+  const centerSize = Math.max(11, Math.min(18, Math.round(hole * 0.17)))
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    // shrink-0: as a flex child the donut was being squeezed narrower than its
+    // declared size, which squashed the ring and pushed the centre label out.
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       {empty && (
         <div
           className="absolute inset-0 rounded-full border-[14px] border-slate-100"
@@ -168,9 +173,17 @@ export function Donut({
       </ResponsiveContainer>
       {(centerValue || centerLabel) && !empty && (
         <div className="absolute inset-0 grid place-items-center pointer-events-none">
-          <div className="text-center">
-            <p className="text-[17px] font-extrabold text-slate-900 leading-tight">{centerValue}</p>
-            <p className="text-[11px] text-slate-500">{centerLabel}</p>
+          <div className="text-center leading-tight" style={{ maxWidth: hole * 0.92 }}>
+            <p
+              className="font-extrabold text-slate-900 leading-tight truncate"
+              style={{ fontSize: centerSize }}
+              title={centerValue}
+            >
+              {centerValue}
+            </p>
+            <p className="text-slate-500 truncate" style={{ fontSize: Math.max(9, centerSize - 6) }}>
+              {centerLabel}
+            </p>
           </div>
         </div>
       )}

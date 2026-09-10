@@ -121,7 +121,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
           tint="#3b82f6"
           footer={
             <div>
-              <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+              <div className="flex justify-between gap-1 text-[9.5px] text-slate-400 mb-1 whitespace-nowrap">
                 <span>{isIncome ? 'Target' : 'Budget'}: {money(target)}</span>
                 <span className="font-bold text-slate-500">{pct(current, target)}%</span>
               </div>

@@ -60,7 +60,7 @@
     @apply p-5;
   }
   .card-title {
-    @apply text-[15px] font-bold text-slate-800;
+    @apply text-[14px] font-bold text-slate-800;
   }
   .btn-primary {
     @apply btn bg-brand-600 text-white hover:bg-brand-700 shadow-sm shadow-brand-600/25;

@@ -1,13 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { CalendarDays, Camera, Info, Sparkles, X } from 'lucide-react'
 import { Modal, Field } from '@/components/ui/Modal'
+import { BillScanModal } from '@/components/BillScanModal'
 import { useStore } from '@/store/useStore'
-import { TODAY } from '@/lib/format'
+import { hasGemini } from '@/lib/gemini'
+import { TODAY, fmtDate } from '@/lib/format'
+import { categoriesOf, findCategoryByName, statementFor, subcategoriesOf } from '@/lib/selectors'
 import type { Currency, Transaction, TxnType } from '@/types'
 
-const INCOME_CATEGORIES = ['Restaurant Sales', 'Online Orders', 'Catering', 'Salary', 'Investment', 'Refund / Adjustment', 'Other Income']
-const EXPENSE_CATEGORIES = ['Home / Rent', 'Groceries', 'Transport', 'Utilities', 'Shopping', 'Family Support', 'Health', 'Restaurants', 'Personal', 'Subscriptions', 'Loan Payment', 'Education', 'Other']
+/** Used only until the user creates categories of their own. */
+const FALLBACK_INCOME = ['Salary', 'Business Income', 'Investment', 'Other Income']
+const FALLBACK_EXPENSE = [
+  'Groceries', 'Home / Rent', 'Utilities', 'Transport', 'Health', 'Restaurants',
+  'Shopping', 'Family Support', 'Personal', 'Subscriptions', 'Education', 'Loan Payment', 'Other',
+]
 const METHODS = ['Bank Transfer', 'Cash', 'Card', 'Credit Card', 'Cheque', 'Auto Debit', 'Online']
-/** Shown until you add people of your own. */
 const DEFAULT_PEOPLE = ['Me', 'Family', 'Others']
 
 export function TransactionModal({
@@ -21,18 +28,26 @@ export function TransactionModal({
   type: TxnType
   editing?: Transaction | null
 }) {
-  const { accounts, people, addTransaction, updateTransaction } = useStore()
-  const cats = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const {
+    accounts, people, categories, subcategories, addTransaction, updateTransaction,
+  } = useStore()
+  const [scan, setScan] = useState(false)
+
+  const isIncome = type === 'income'
+  const cats = useMemo(() => categoriesOf(categories, type), [categories, type])
+  const catNames = cats.length ? cats.map((c) => c.name) : isIncome ? FALLBACK_INCOME : FALLBACK_EXPENSE
 
   const blank = {
     description: '',
     amount: '',
     date: TODAY,
-    category: cats[0],
+    category: catNames[0] ?? '',
+    subcategory: '',
     accountId: accounts[0]?.id ?? '',
     currency: 'AED' as Currency,
-    person: 'Me',
+    person: people[0]?.name ?? 'Me',
     method: METHODS[0],
+    store: '',
     notes: '',
   }
   const [form, setForm] = useState(blank)
@@ -45,34 +60,54 @@ export function TransactionModal({
         amount: String(editing.amount),
         date: editing.date,
         category: editing.category,
+        subcategory: editing.subcategory ?? '',
         accountId: editing.accountId,
         currency: editing.currency,
-        person: editing.person ?? 'Me',
+        person: editing.person ?? DEFAULT_PEOPLE[0],
         method: editing.method ?? METHODS[0],
+        store: editing.store ?? '',
         notes: editing.notes ?? '',
       })
     } else {
-      setForm({ ...blank, category: cats[0], accountId: accounts[0]?.id ?? '' })
+      setForm({ ...blank, category: catNames[0] ?? '', accountId: accounts[0]?.id ?? '' })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing, type])
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
+  /** Changing category invalidates whatever sub-category was chosen. */
+  const setCategory = (name: string) => setForm((f) => ({ ...f, category: name, subcategory: '' }))
+
+  const activeCat = findCategoryByName(categories, type, form.category)
+  const subs = useMemo(() => subcategoriesOf(subcategories, activeCat?.id), [subcategories, activeCat])
+
+  const card = accounts.find((a) => a.id === form.accountId)
+  const usingCard = form.method === 'Credit Card'
+  const cardAccounts = accounts.filter((a) => a.type === 'card')
+  const cycle =
+    usingCard && card?.statementDay && card?.dueDay
+      ? statementFor(form.date, card.statementDay, card.dueDay)
+      : null
+
+  const amountValid = Number(form.amount) > 0
+  const canSave = form.description.trim().length > 0 && amountValid
+
   const submit = () => {
-    const amount = Number(form.amount)
-    if (!form.description.trim() || !amount || amount <= 0) return
+    if (!canSave) return
     const payload = {
       type,
       date: form.date,
       description: form.description.trim(),
       category: form.category,
+      subcategory: form.subcategory || undefined,
       accountId: form.accountId,
-      amount,
+      amount: Number(form.amount),
       currency: form.currency,
       person: form.person,
       method: form.method,
-      notes: form.notes,
+      store: form.store.trim() || undefined,
+      notes: form.notes.trim() || undefined,
     }
     if (editing) updateTransaction(editing.id, payload)
     else addTransaction(payload)
@@ -80,74 +115,248 @@ export function TransactionModal({
   }
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`${editing ? 'Edit' : 'Add'} ${type === 'income' ? 'Income' : 'Expense'}`}
-      subtitle={type === 'income' ? 'Record money coming in' : 'Record money going out'}
-      footer={
-        <>
-          <button className="btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button className={type === 'income' ? 'btn-green' : 'btn-rose'} onClick={submit}>
-            {editing ? 'Save Changes' : `Add ${type === 'income' ? 'Income' : 'Expense'}`}
-          </button>
-        </>
-      }
-    >
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Description" className="col-span-2">
-          <input className="input" value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="e.g. Restaurant Sales (POS)" autoFocus />
-        </Field>
-        <Field label="Amount">
-          <input className="input" type="number" min="0" value={form.amount} onChange={(e) => set('amount', e.target.value)} placeholder="0.00" />
-        </Field>
-        <Field label="Currency">
-          <select className="input" value={form.currency} onChange={(e) => set('currency', e.target.value)}>
-            <option>AED</option>
-            <option>INR</option>
-            <option>USD</option>
-          </select>
-        </Field>
-        <Field label="Date">
-          <input className="input" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
-        </Field>
-        <Field label="Category">
-          <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
-            {cats.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Account">
-          <select className="input" value={form.accountId} onChange={(e) => set('accountId', e.target.value)}>
-            {accounts.length === 0 && <option value="">No accounts yet — add one first</option>}
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Payment Method">
-          <select className="input" value={form.method} onChange={(e) => set('method', e.target.value)}>
-            {METHODS.map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Person" className="col-span-2">
-          <select className="input" value={form.person} onChange={(e) => set('person', e.target.value)}>
-            {(people.length ? people.map((p) => p.name) : DEFAULT_PEOPLE).map((name) => (
-              <option key={name}>{name}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Notes (optional)" className="col-span-2">
-          <input className="input" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Add a note…" />
-        </Field>
-      </div>
-    </Modal>
+    <>
+      <Modal
+        open={open && !scan}
+        onClose={onClose}
+        title={`${editing ? 'Edit' : 'Add'} ${isIncome ? 'Income' : 'Expense'}`}
+        subtitle={isIncome ? 'Record money coming in' : 'Record money going out'}
+        width="max-w-2xl"
+        footer={
+          <>
+            <button className="btn-ghost" onClick={onClose}>
+              Cancel
+            </button>
+            <button
+              className={`${isIncome ? 'btn-green' : 'btn-rose'} disabled:opacity-50`}
+              disabled={!canSave}
+              onClick={submit}
+            >
+              {editing ? 'Save Changes' : `Add ${isIncome ? 'Income' : 'Expense'}`}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Scan shortcut — expenses only, and only when a key is configured. */}
+          {!isIncome && !editing && hasGemini && (
+            <div className="rounded-xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setScan(true)}
+                className="btn bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 h-9"
+              >
+                <Camera size={15} /> Scan with AI
+              </button>
+              <p className="text-[12px] text-slate-600 flex-1 min-w-[180px]">
+                Take a photo of your receipt and we'll fill the details for you.
+              </p>
+            </div>
+          )}
+
+          <Field label="Description">
+            <div className="relative">
+              <input
+                className="input pr-9"
+                value={form.description}
+                onChange={(e) => set('description', e.target.value)}
+                placeholder={isIncome ? 'e.g. Salary, Restaurant sales' : 'e.g. Grocery purchase'}
+                autoFocus
+              />
+              {form.description && (
+                <button
+                  onClick={() => set('description', '')}
+                  aria-label="Clear description"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-600 cursor-pointer"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">
+              {isIncome ? 'e.g. Monthly salary, Catering order, Refund' : 'e.g. Grocery purchase, Carrefour, Lulu'}
+            </p>
+          </Field>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Amount">
+              <input
+                className="input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.amount}
+                onChange={(e) => set('amount', e.target.value)}
+                placeholder="0.00"
+              />
+            </Field>
+            <Field label="Currency">
+              <select className="input" value={form.currency} onChange={(e) => set('currency', e.target.value)}>
+                <option>AED</option>
+                <option>INR</option>
+                <option>USD</option>
+              </select>
+            </Field>
+
+            <Field label="Date">
+              <input className="input" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
+            </Field>
+            <Field label="Category">
+              <select className="input" value={form.category} onChange={(e) => setCategory(e.target.value)}>
+                {catNames.length === 0 && <option value="">No categories yet</option>}
+                {cats.length
+                  ? cats.map((c) => (
+                      <option key={c.id} value={c.name}>
+                        {c.icon} {c.name}
+                      </option>
+                    ))
+                  : catNames.map((n) => <option key={n}>{n}</option>)}
+              </select>
+            </Field>
+
+            <Field label="Sub-category" className="col-span-2">
+              <select
+                className="input disabled:bg-slate-50 disabled:text-slate-400"
+                value={form.subcategory}
+                disabled={subs.length === 0}
+                onChange={(e) => set('subcategory', e.target.value)}
+              >
+                <option value="">
+                  {subs.length
+                    ? `All of ${form.category} — pick one (optional)`
+                    : activeCat
+                      ? `No sub-categories under ${form.category}`
+                      : 'Create this category to add sub-categories'}
+                </option>
+                {subs.map((sc) => (
+                  <option key={sc.id} value={sc.name}>
+                    {sc.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+
+            <Field label="Account">
+              <select className="input" value={form.accountId} onChange={(e) => set('accountId', e.target.value)}>
+                {accounts.length === 0 && <option value="">No accounts yet — add one first</option>}
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Payment Method">
+              <select className="input" value={form.method} onChange={(e) => set('method', e.target.value)}>
+                {METHODS.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {/* Credit card statement context */}
+          {usingCard && (
+            <div className="rounded-xl bg-brand-50/60 border border-brand-100 p-3.5 space-y-3">
+              <p className="text-[12px] font-bold text-slate-700">Credit Card</p>
+
+              {cardAccounts.length > 0 && (
+                <select
+                  className="input bg-white"
+                  value={cardAccounts.some((a) => a.id === form.accountId) ? form.accountId : ''}
+                  onChange={(e) => set('accountId', e.target.value)}
+                >
+                  <option value="">Select the card this went on</option>
+                  {cardAccounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name} {a.details && a.details !== '—' ? `· ${a.details}` : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {cycle ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-white px-3 py-2.5">
+                      <p className="text-[10.5px] text-slate-400 mb-1">Statement Period</p>
+                      <p className="text-[12.5px] font-bold text-slate-800 inline-flex items-center gap-1.5">
+                        <CalendarDays size={13} className="text-slate-400" />
+                        {fmtDate(cycle.start).slice(0, 6)} – {fmtDate(cycle.end)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white px-3 py-2.5">
+                      <p className="text-[10.5px] text-slate-400 mb-1">Payment Due</p>
+                      <p className="text-[12.5px] font-bold text-slate-800 inline-flex items-center gap-1.5">
+                        <CalendarDays size={13} className="text-slate-400" />
+                        {fmtDate(cycle.due)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-[11.5px] text-slate-600 flex items-start gap-1.5">
+                    <Info size={13} className="text-slate-400 mt-0.5 shrink-0" />
+                    This expense appears on the statement closing {fmtDate(cycle.end)} and is due on{' '}
+                    {fmtDate(cycle.due)}.
+                  </p>
+                </>
+              ) : (
+                <p className="text-[11.5px] text-slate-600 flex items-start gap-1.5">
+                  <Info size={13} className="text-slate-400 mt-0.5 shrink-0" />
+                  {cardAccounts.length === 0
+                    ? 'Add a Credit Card account to see its statement period and due date here.'
+                    : 'Set a statement day and due day on this card (Accounts → edit) to see its billing cycle.'}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            {!isIncome && (
+              <Field label="Store (optional)">
+                <input
+                  className="input"
+                  value={form.store}
+                  onChange={(e) => set('store', e.target.value)}
+                  placeholder="e.g. Carrefour"
+                />
+              </Field>
+            )}
+            <Field label="Person" className={isIncome ? 'col-span-2' : ''}>
+              <select className="input" value={form.person} onChange={(e) => set('person', e.target.value)}>
+                {(people.length ? people.map((p) => p.name) : DEFAULT_PEOPLE).map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          <Field label="Notes (optional)">
+            <input
+              className="input"
+              value={form.notes}
+              onChange={(e) => set('notes', e.target.value)}
+              placeholder="Add a note…"
+            />
+          </Field>
+
+          {categories.length === 0 && (
+            <p className="text-[11.5px] text-slate-500 flex items-start gap-1.5">
+              <Sparkles size={13} className="text-brand-500 mt-0.5 shrink-0" />
+              These are the built-in categories. Create your own in Settings → Categories to add sub-categories.
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      <BillScanModal
+        open={scan}
+        onClose={() => {
+          setScan(false)
+          onClose()
+        }}
+        people={people.map((p) => p.name)}
+        accounts={accounts}
+        onAdd={addTransaction}
+      />
+    </>
   )
 }

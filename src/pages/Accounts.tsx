@@ -269,14 +269,20 @@ function AccountModal({
 }) {
   const [form, setForm] = useState({
     name: '', type: 'bank' as AccountType, details: '', balance: '', currency: 'AED' as Currency, color: '#3b82f6',
+    statementDay: '', dueDay: '',
   })
 
   useEffect(() => {
     if (open)
       setForm(
         editing
-          ? { name: editing.name, type: editing.type, details: editing.details, balance: String(editing.balance), currency: editing.currency, color: editing.color }
-          : { name: '', type: 'bank', details: '', balance: '', currency: 'AED', color: '#3b82f6' },
+          ? {
+              name: editing.name, type: editing.type, details: editing.details, balance: String(editing.balance),
+              currency: editing.currency, color: editing.color,
+              statementDay: editing.statementDay ? String(editing.statementDay) : '',
+              dueDay: editing.dueDay ? String(editing.dueDay) : '',
+            }
+          : { name: '', type: 'bank', details: '', balance: '', currency: 'AED', color: '#3b82f6', statementDay: '', dueDay: '' },
       )
   }, [open, editing])
 
@@ -290,6 +296,9 @@ function AccountModal({
       currency: form.currency,
       color: form.color,
       status: form.type === 'card' ? 'Available' : 'Active',
+      // Only cards have a billing cycle; clear it if the type changed away.
+      statementDay: form.type === 'card' && form.statementDay ? Number(form.statementDay) : undefined,
+      dueDay: form.type === 'card' && form.dueDay ? Number(form.dueDay) : undefined,
     })
     onClose()
   }
@@ -330,6 +339,37 @@ function AccountModal({
             <option>AED</option><option>INR</option><option>USD</option>
           </select>
         </Field>
+        {form.type === 'card' && (
+          <>
+            <Field label="Statement closes on">
+              <input
+                className="input"
+                type="number"
+                min="1"
+                max="31"
+                value={form.statementDay}
+                onChange={(e) => setForm({ ...form, statementDay: e.target.value })}
+                placeholder="25"
+              />
+            </Field>
+            <Field label="Payment due on">
+              <input
+                className="input"
+                type="number"
+                min="1"
+                max="31"
+                value={form.dueDay}
+                onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
+                placeholder="15"
+              />
+            </Field>
+            <p className="col-span-2 text-[11.5px] text-slate-500 -mt-1">
+              Day of the month the statement closes, and the day of the following month the payment falls due. Set
+              both to see the billing cycle when recording a credit card expense.
+            </p>
+          </>
+        )}
+
         <Field label="Accent Colour" className="col-span-2">
           <div className="flex gap-2 flex-wrap">
             {['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'].map((c) => (

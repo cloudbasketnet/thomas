@@ -17,6 +17,8 @@ export interface RemoteData {
   notes: any[]
   goals: any[]
   priceWatch: any[]
+  categories: any[]
+  subcategories: any[]
 }
 
 /** Read every table for the signed-in user. RLS scopes the rows, so no filter is needed. */

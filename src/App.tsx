@@ -6,6 +6,7 @@ import Accounts from '@/pages/Accounts'
 import Income from '@/pages/Income'
 import Expenses from '@/pages/Expenses'
 import ExpenseReport from '@/pages/ExpenseReport'
+import Categories from '@/pages/Categories'
 import Budget from '@/pages/Budget'
 import Loans from '@/pages/Loans'
 import People from '@/pages/People'
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="goals" element={<Goals />} />
             <Route path="reports" element={<Reports />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="categories" element={<Categories />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

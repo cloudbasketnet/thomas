@@ -1,4 +1,4 @@
-import type { Account, Bill, BudgetCategory, Goal, Loan, Transaction } from '@/types'
+import type { Account, Bill, BudgetCategory, Category, CategoryKind, Goal, Loan, Subcategory, Transaction } from '@/types'
 import { toBase, monthKey, daysLeft, TODAY, addMonths, monthLabel } from '@/lib/format'
 
 /** The live calendar month, so every "this month" figure follows the real clock. */
@@ -288,4 +288,66 @@ export function warranties(txns: Transaction[], from: string = TODAY) {
 /** The last `n` months as yyyy-MM keys, newest first — for the report month picker. */
 export function addMonthsOptions(n = 12) {
   return Array.from({ length: n }, (_, i) => addMonths(CURRENT_MONTH, -i))
+}
+
+// ---------------------------------------------------------------------------
+// Categories. The user's own list drives the pickers; the built-in names are
+// only a fallback so the forms still work before any category is created.
+// ---------------------------------------------------------------------------
+
+/** Categories of one kind, in the user's chosen order. */
+export function categoriesOf(categories: Category[], kind: CategoryKind) {
+  return categories.filter((c) => c.kind === kind).sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name))
+}
+
+/** Sub-categories belonging to one category, in order. */
+export function subcategoriesOf(subcategories: Subcategory[], categoryId: string | undefined) {
+  if (!categoryId) return []
+  return subcategories
+    .filter((s) => s.categoryId === categoryId)
+    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name))
+}
+
+/** Look a category up by the name stored on a transaction. */
+export function findCategoryByName(categories: Category[], kind: CategoryKind, name: string) {
+  const n = name.trim().toLowerCase()
+  return categories.find((c) => c.kind === kind && c.name.trim().toLowerCase() === n)
+}
+
+// ---------------------------------------------------------------------------
+// Credit card statement cycles.
+// ---------------------------------------------------------------------------
+
+/** Clamp a day to a month that may be shorter, so the 31st lands on the 30th. */
+function onDay(year: number, monthIndex: number, day: number) {
+  const last = new Date(year, monthIndex + 1, 0).getDate()
+  const d = new Date(year, monthIndex, Math.min(day, last))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/**
+ * Which statement a card expense falls on, and when that statement is due.
+ * A statementDay of 25 means the period runs the 26th to the 25th; the
+ * payment then falls on dueDay of the following month.
+ */
+export function statementFor(date: string, statementDay: number, dueDay: number) {
+  const d = new Date(date + 'T00:00:00')
+  if (Number.isNaN(d.getTime())) return null
+
+  const y = d.getFullYear()
+  const m = d.getMonth()
+  // On or before the closing day it belongs to the statement closing this month.
+  const closesThisMonth = d.getDate() <= Math.min(statementDay, new Date(y, m + 1, 0).getDate())
+  const closeMonth = closesThisMonth ? m : m + 1
+
+  const end = onDay(y, closeMonth, statementDay)
+  // The period opens the day after the previous statement closed. Deriving it
+  // by adding a day (rather than using statementDay + 1) keeps it correct when
+  // the closing day is the 31st and the previous month is shorter.
+  const prevClose = new Date(onDay(y, closeMonth - 1, statementDay) + 'T00:00:00')
+  prevClose.setDate(prevClose.getDate() + 1)
+  const start = onDay(prevClose.getFullYear(), prevClose.getMonth(), prevClose.getDate())
+  const due = onDay(y, closeMonth + 1, dueDay)
+
+  return { start, end, due }
 }

@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
-  BarChart3, CalendarDays, CreditCard, FileText, Gauge, Home, Landmark,
+  BarChart3, CalendarDays, CreditCard, FileText, FolderTree, Gauge, Home, Landmark,
   MinusCircle, PiggyBank, PlusCircle, Settings as SettingsIcon, ShoppingBag, ShoppingCart, StickyNote, Tags, Users, Wallet,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
@@ -21,6 +21,7 @@ const NAV = [
   { to: '/price-tracker', label: 'Price Tracker', icon: Tags },
   { to: '/shopping', label: 'Shopping Assistant', icon: ShoppingCart },
   { to: '/goals', label: 'Savings Goals', icon: PiggyBank },
+  { to: '/categories', label: 'Categories', icon: FolderTree },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },
   { to: '/settings', label: 'Settings', icon: SettingsIcon },

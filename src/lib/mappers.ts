@@ -1,5 +1,6 @@
 import type {
-  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Settings, Transaction,
+  Account, Bill, BudgetCategory, Category, Doc, Goal, Loan, Note, Person, PriceWatch, Settings,
+  Subcategory, Transaction,
 } from '@/types'
 
 /** Every syncable collection in the store, and the table that backs it. */
@@ -14,6 +15,8 @@ export const TABLES = {
   notes: 'notes',
   goals: 'goals',
   priceWatch: 'price_watch',
+  categories: 'categories',
+  subcategories: 'subcategories',
 } as const
 
 export type Collection = keyof typeof TABLES
@@ -34,10 +37,13 @@ export const MAPPERS: {
     to: (a: Account) => ({
       id: a.id, name: a.name, type: a.type, details: a.details, balance: a.balance,
       currency: a.currency, status: a.status, color: a.color, bank: a.bank ?? null,
+      statement_day: a.statementDay ?? null, due_day: a.dueDay ?? null,
     }),
     from: (r): Account => ({
       id: r.id, name: r.name, type: r.type, details: r.details, balance: num(r.balance),
       currency: r.currency, status: r.status, color: r.color, bank: r.bank ?? undefined,
+      statementDay: r.statement_day == null ? undefined : num(r.statement_day),
+      dueDay: r.due_day == null ? undefined : num(r.due_day),
     }),
   },
 
@@ -47,6 +53,7 @@ export const MAPPERS: {
       account_id: t.accountId, amount: t.amount, currency: t.currency,
       person: t.person ?? null, method: t.method ?? null, notes: t.notes ?? null,
       store: t.store ?? null, qty: t.qty ?? null, warranty_months: t.warrantyMonths ?? null,
+      subcategory: t.subcategory ?? null,
     }),
     from: (r): Transaction => ({
       id: r.id, type: r.type, date: r.date, description: r.description, category: r.category,
@@ -55,6 +62,7 @@ export const MAPPERS: {
       store: r.store ?? undefined,
       qty: r.qty == null ? undefined : num(r.qty),
       warrantyMonths: r.warranty_months == null ? undefined : num(r.warranty_months),
+      subcategory: r.subcategory ?? undefined,
     }),
   },
 
@@ -129,6 +137,24 @@ export const MAPPERS: {
     from: (r): Goal => ({
       id: r.id, name: r.name, target: num(r.target), saved: num(r.saved), deadline: r.deadline,
       icon: r.icon, color: r.color,
+    }),
+  },
+
+  categories: {
+    to: (c: Category) => ({
+      id: c.id, name: c.name, kind: c.kind, icon: c.icon, color: c.color, sort: c.sort,
+    }),
+    from: (r): Category => ({
+      id: r.id, name: r.name, kind: r.kind, icon: r.icon, color: r.color, sort: num(r.sort),
+    }),
+  },
+
+  subcategories: {
+    to: (s: Subcategory) => ({
+      id: s.id, category_id: s.categoryId, name: s.name, sort: s.sort,
+    }),
+    from: (r): Subcategory => ({
+      id: r.id, categoryId: r.category_id, name: r.name, sort: num(r.sort),
     }),
   },
 

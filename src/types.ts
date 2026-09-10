@@ -12,6 +12,10 @@ export interface Account {
   status: 'Active' | 'Available' | 'Closed'
   color: string
   bank?: string
+  /** Cards only: day of month the statement closes (25 = period runs 26th–25th). */
+  statementDay?: number
+  /** Cards only: day of the following month the payment falls due. */
+  dueDay?: number
 }
 
 export type TxnType = 'income' | 'expense'
@@ -34,6 +38,8 @@ export interface Transaction {
   qty?: number
   /** Warranty length in months, for purchases worth tracking afterwards. */
   warrantyMonths?: number
+  /** Narrower classification within `category`, e.g. Groceries → Rice. */
+  subcategory?: string
 }
 
 export interface BudgetCategory {
@@ -143,4 +149,22 @@ export interface Settings {
   monthlyBudget: number
   periodStart: string
   periodEnd: string
+}
+
+export type CategoryKind = 'expense' | 'income'
+
+export interface Category {
+  id: string
+  name: string
+  kind: CategoryKind
+  icon: string
+  color: string
+  sort: number
+}
+
+export interface Subcategory {
+  id: string
+  categoryId: string
+  name: string
+  sort: number
 }

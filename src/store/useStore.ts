@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Settings, Transaction,
+  Account, Bill, BudgetCategory, Category, Doc, Goal, Loan, Note, Person, PriceWatch, Settings,
+  Subcategory, Transaction,
 } from '@/types'
 import {
   ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, SETTINGS, TRANSACTIONS,
 } from '@/data/seed'
 import { setBaseCurrency, uid } from '@/lib/format'
+import { DEFAULT_CATEGORIES } from '@/data/categories'
 import { hasSupabase } from '@/lib/supabase'
 import { deleteRow, upsertRow, upsertSettings, type RemoteData } from '@/lib/sync'
 import type { Collection } from '@/lib/mappers'
@@ -24,6 +26,8 @@ interface State {
   notes: Note[]
   goals: Goal[]
   priceWatch: PriceWatch[]
+  categories: Category[]
+  subcategories: Subcategory[]
 
   // ---- cloud session
   userId: string | null
@@ -80,6 +84,17 @@ interface State {
   contributeGoal: (id: string, amount: number) => void
 
 
+  addCategory: (c: Omit<Category, 'id'>) => void
+  updateCategory: (id: string, patch: Partial<Category>) => void
+  removeCategory: (id: string) => void
+
+  addSubcategory: (s: Omit<Subcategory, 'id'>) => void
+  updateSubcategory: (id: string, patch: Partial<Subcategory>) => void
+  removeSubcategory: (id: string) => void
+
+  /** Write the built-in starter category set into the user's own list. */
+  installDefaultCategories: () => void
+
   addPriceWatch: (p: Omit<PriceWatch, 'id'>) => void
   updatePriceWatch: (id: string, patch: Partial<PriceWatch>) => void
   removePriceWatch: (id: string) => void
@@ -102,6 +117,8 @@ const seedState = () => ({
   notes: NOTES,
   goals: GOALS,
   priceWatch: PRICE_WATCH,
+  categories: [],
+  subcategories: [],
 })
 
 // ---------------------------------------------------------------------------
@@ -170,6 +187,8 @@ export const useStore = create<State>()(
           notes: data.notes,
           goals: data.goals,
           priceWatch: data.priceWatch,
+          categories: data.categories ?? [],
+          subcategories: data.subcategories ?? [],
           lastSynced: new Date().toISOString(),
           syncError: null,
         })
@@ -318,6 +337,54 @@ export const useStore = create<State>()(
         set({
           goals: patchList<Goal>(get().goals, id, { saved: Math.min(goal.target, goal.saved + amount) }, 'goals'),
         })
+      },
+
+      // ------------------------------------------------------------ categories
+      addCategory: (c) => {
+        const item = { ...c, id: uid('c') }
+        set({ categories: [...get().categories, item] })
+        push('categories', item)
+      },
+      updateCategory: (id, patch) => set({ categories: patchList(get().categories, id, patch, 'categories') }),
+      removeCategory: (id) => {
+        // The database cascades to sub-categories; mirror that locally.
+        const kids = get().subcategories.filter((x) => x.categoryId === id)
+        set({
+          categories: get().categories.filter((c) => c.id !== id),
+          subcategories: get().subcategories.filter((x) => x.categoryId !== id),
+        })
+        drop('categories', id)
+        kids.forEach((k) => drop('subcategories', k.id))
+      },
+
+      addSubcategory: (sc) => {
+        const item = { ...sc, id: uid('sc') }
+        set({ subcategories: [...get().subcategories, item] })
+        push('subcategories', item)
+      },
+      updateSubcategory: (id, patch) =>
+        set({ subcategories: patchList(get().subcategories, id, patch, 'subcategories') }),
+      removeSubcategory: (id) => {
+        set({ subcategories: get().subcategories.filter((x) => x.id !== id) })
+        drop('subcategories', id)
+      },
+
+      installDefaultCategories: () => {
+        const existing = new Set(get().categories.map((c) => `${c.kind}:${c.name.toLowerCase()}`))
+        const cats: Category[] = []
+        const subs: Subcategory[] = []
+
+        DEFAULT_CATEGORIES.forEach((d, i) => {
+          if (existing.has(`${d.kind}:${d.name.toLowerCase()}`)) return
+          const id = uid('c')
+          cats.push({ id, name: d.name, kind: d.kind, icon: d.icon, color: d.color, sort: i })
+          d.subs.forEach((n, j) => subs.push({ id: uid('sc'), categoryId: id, name: n, sort: j }))
+        })
+        if (!cats.length) return
+
+        set({ categories: [...get().categories, ...cats], subcategories: [...get().subcategories, ...subs] })
+        cats.forEach((c) => push('categories', c))
+        subs.forEach((sc) => push('subcategories', sc))
       },
 
       // ----------------------------------------------------------- price watch

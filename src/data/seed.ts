@@ -1,17 +1,23 @@
 import type {
   Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Purchase, Settings, Transaction,
 } from '@/types'
-import { TODAY } from '@/lib/format'
-
-/** First and last day of the month `iso` falls in. */
-function monthBounds(iso: string) {
-  const [y, m] = iso.split('-').map(Number)
-  const last = new Date(y, m, 0).getDate()
-  const mm = String(m).padStart(2, '0')
-  return { start: `${y}-${mm}-01`, end: `${y}-${mm}-${last}` }
+/**
+ * First and last day of the current month.
+ *
+ * Deliberately computed here rather than imported from lib/format: format.ts
+ * imports FX from this file, so reaching back into it would make the two
+ * modules circular and leave TODAY uninitialised at load time depending on
+ * which one the bundler evaluates first.
+ */
+function currentPeriod(d = new Date()) {
+  const y = d.getFullYear()
+  const m = d.getMonth()
+  const mm = String(m + 1).padStart(2, '0')
+  const last = new Date(y, m + 1, 0).getDate()
+  return { start: `${y}-${mm}-01`, end: `${y}-${mm}-${String(last).padStart(2, '0')}` }
 }
 
-const period = monthBounds(TODAY)
+const period = currentPeriod()
 
 /**
  * Defaults for a brand-new account. Everything starts empty and at zero —

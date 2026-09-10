@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
   BarChart3, CalendarDays, CreditCard, FileText, FolderTree, Gauge, Home, Landmark,
-  MinusCircle, PiggyBank, PlusCircle, Settings as SettingsIcon, ShoppingBag, ShoppingCart, StickyNote, Tags, Users, Wallet,
+  MinusCircle, PiggyBank, PlusCircle, Settings as SettingsIcon, ShoppingBag, ShoppingCart, Sparkles, StickyNote, Tags, Users, Wallet,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { docStatus } from '@/lib/selectors'
+import { hasGemini } from '@/lib/gemini'
+import { AskModal } from '@/components/AskModal'
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: Home, end: true },
@@ -75,6 +78,8 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const documents = useStore((s) => s.documents)
   const notes = useStore((s) => s.notes)
 
+  const [ask, setAsk] = useState(false)
+
   const badges: Record<string, number> = {
     docs: documents.filter((d) => docStatus(d.expiry) !== 'Valid').length,
     notes: notes.filter((n) => !n.done && n.status === 'Pending').length,
@@ -137,15 +142,36 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
 
       <div className="p-2.5 pt-0">
-        <div className="relative rounded-2xl overflow-hidden h-[124px] shadow-md">
-          <MountainScene />
-          <div className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center">
-            <p className="text-[12px] font-bold text-white leading-tight">Better Tracking</p>
-            <p className="text-[10px] text-white/75 leading-tight mt-0.5">A Brighter Tomorrow</p>
+        {hasGemini ? (
+          <button
+            onClick={() => setAsk(true)}
+            className="group relative rounded-2xl overflow-hidden h-[124px] shadow-md w-full block cursor-pointer text-left"
+            title="Ask Thomas.ai about your money"
+          >
+            <MountainScene />
+            <span className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 rounded-full bg-white/20 backdrop-blur px-2 py-0.5 text-[9.5px] font-bold text-white group-hover:bg-white/30 transition">
+              <Sparkles size={10} /> Ask
+            </span>
+            <span className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center block">
+              <span className="block text-[12px] font-bold text-white leading-tight">Better Tracking</span>
+              <span className="block text-[10px] text-white/75 leading-tight mt-0.5 group-hover:text-white transition">
+                Ask about your money
+              </span>
+            </span>
+          </button>
+        ) : (
+          <div className="relative rounded-2xl overflow-hidden h-[124px] shadow-md">
+            <MountainScene />
+            <div className="absolute inset-x-0 bottom-0 px-3 pb-3 text-center">
+              <p className="text-[12px] font-bold text-white leading-tight">Better Tracking</p>
+              <p className="text-[10px] text-white/75 leading-tight mt-0.5">A Brighter Tomorrow</p>
+            </div>
           </div>
-        </div>
+        )}
         <p className="mt-2 text-center text-[9.5px] text-slate-300">v1.0.0</p>
       </div>
+
+      <AskModal open={ask} onClose={() => setAsk(false)} />
     </aside>
   )
 }

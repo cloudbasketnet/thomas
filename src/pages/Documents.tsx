@@ -1,16 +1,52 @@
-import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, FileText, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { AlertTriangle, Camera, CheckCircle2, FileText, Loader2, Plus, ShieldCheck, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { daysLeft, fmtDate, TODAY } from '@/lib/format'
 import { docStatus } from '@/lib/selectors'
+import { DOCUMENT_TYPES, hasGemini, readFileAsDataUrl, scanDocument } from '@/lib/gemini'
 
 export default function Documents() {
   const { documents, addDocument, removeDocument } = useStore()
   const [filter, setFilter] = useState<'All' | 'Valid' | 'Expiring Soon' | 'Expired'>('All')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({ name: '', type: 'Identity', expiry: TODAY, owner: 'Thomas', icon: '📄' })
+  const [scanning, setScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const abort = useRef<AbortController | null>(null)
+
+  /** Read a photo of a document straight into the form for review. */
+  const scanInto = async (file: File | undefined) => {
+    if (!file) return
+    setScanError(null)
+    if (file.size > 8 * 1024 * 1024) {
+      setScanError('Please use an image under 8MB.')
+      return
+    }
+    setScanning(true)
+    abort.current = new AbortController()
+    try {
+      const found = await scanDocument(
+        await readFileAsDataUrl(file),
+        file.type || 'image/jpeg',
+        abort.current.signal,
+      )
+      setForm((f) => ({
+        ...f,
+        name: found.name || f.name,
+        type: (DOCUMENT_TYPES as readonly string[]).includes(found.type) ? found.type : f.type,
+        expiry: found.expiry || f.expiry,
+        owner: found.owner || f.owner,
+      }))
+      if (!found.expiry) setScanError('No expiry date was visible — set it by hand below.')
+      setModal(true)
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') setScanError(e instanceof Error ? e.message : String(e))
+      setModal(true)
+    }
+    setScanning(false)
+  }
 
   const enriched = useMemo(
     () => documents.map((d) => ({ ...d, live: docStatus(d.expiry), days: daysLeft(d.expiry) })).sort((a, b) => a.days - b.days),
@@ -36,7 +72,26 @@ export default function Documents() {
         title="Documents"
         subtitle="Emirates ID, visa, licence, insurance — tracked with expiry reminders."
         actions={
-          <button className="btn-primary" onClick={() => setModal(true)}><Plus size={15} /> Add Document</button>
+          <>
+            {hasGemini && (
+              <label className={`btn-ghost cursor-pointer ${scanning ? 'opacity-60 pointer-events-none' : ''}`}>
+                {scanning ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+                {scanning ? 'Reading…' : 'Scan Document'}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/heic,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    scanInto(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            )}
+            <button className="btn-primary" onClick={() => { setScanError(null); setModal(true) }}>
+              <Plus size={15} /> Add Document
+            </button>
+          </>
         }
       />
 
@@ -125,6 +180,12 @@ export default function Documents() {
         }
       >
         <div className="grid grid-cols-2 gap-4">
+          {scanError && (
+            <div className="col-span-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2.5 flex items-start gap-2">
+              <AlertTriangle size={15} className="text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[12px] text-amber-900">{scanError}</p>
+            </div>
+          )}
           <Field label="Document Name" className="col-span-2">
             <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Emirates ID" autoFocus />
           </Field>

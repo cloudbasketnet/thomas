@@ -555,3 +555,114 @@ ${text}`
   })
   return { ...parsed, rows: Array.isArray(parsed.rows) ? parsed.rows : [] }
 }
+
+// ---------------------------------------------------------------------------
+// Identity / insurance document scanning
+// ---------------------------------------------------------------------------
+
+export const DOCUMENT_TYPES = [
+  'Identity', 'Immigration', 'Vehicle', 'Insurance', 'Business', 'Education', 'Medical', 'Other',
+] as const
+
+export interface ScannedDocument {
+  name: string
+  type: string
+  /** yyyy-MM-dd. Empty when the document shows no expiry. */
+  expiry: string
+  owner?: string
+  /** Issue date if printed, for context only. */
+  issued?: string
+}
+
+const DOCUMENT_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    name: { type: 'STRING', description: 'What the document is, e.g. "Emirates ID", "Passport", "Vehicle Registration".' },
+    type: { type: 'STRING', enum: DOCUMENT_TYPES as unknown as string[] },
+    expiry: { type: 'STRING', description: 'Expiry as yyyy-MM-dd. Empty string if none is shown.' },
+    owner: { type: 'STRING', description: 'Name of the holder as printed.' },
+    issued: { type: 'STRING', description: 'Issue date as yyyy-MM-dd, if printed.' },
+  },
+  required: ['name', 'type', 'expiry'],
+}
+
+const DOCUMENT_PROMPT = `You are reading an identity, vehicle, insurance or licence document.
+
+Return:
+- name: what the document is called, e.g. "Emirates ID", "Passport",
+  "Driving Licence", "Vehicle Registration (Mulkiya)", "Health Insurance Card".
+- type: the closest of the allowed types.
+- expiry: the EXPIRY date as yyyy-MM-dd. Cards often print several dates —
+  choose the one labelled expiry, valid until, or date of expiry, never the
+  issue or date of birth. Dates are usually DD/MM/YYYY. If no expiry is shown,
+  return an empty string.
+- owner: the holder's name exactly as printed, if visible.
+- issued: the issue date, if printed.
+
+Read only what is on the document. Never infer an expiry from an issue date or
+from a typical validity period. If a date is unreadable, return an empty string.`
+
+/** Read the key fields off a photo of a document. */
+export async function scanDocument(
+  dataUrl: string,
+  mimeType: string,
+  signal?: AbortSignal,
+): Promise<ScannedDocument> {
+  return callGemini<ScannedDocument>({
+    parts: [{ text: DOCUMENT_PROMPT }, filePart(dataUrl, mimeType)],
+    schema: DOCUMENT_SCHEMA,
+    signal,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Free-text questions about your own money
+// ---------------------------------------------------------------------------
+
+export interface AskTurn {
+  question: string
+  answer: string
+}
+
+/**
+ * Answer a question from the facts pack alone.
+ *
+ * Returns prose rather than JSON — the answers are read, not parsed, and a
+ * schema would only make them stilted.
+ */
+export async function askMoney(
+  question: string,
+  facts: unknown,
+  history: AskTurn[] = [],
+  signal?: AbortSignal,
+): Promise<string> {
+  const prior = history
+    .slice(-4)
+    .map((t) => `Q: ${t.question}\nA: ${t.answer}`)
+    .join('\n\n')
+
+  const prompt = `You answer questions about one person's own financial records.
+Everything you know is in the DATA below. Today is included there.
+
+${prior ? `EARLIER IN THIS CONVERSATION:\n${prior}\n\n` : ''}QUESTION: ${question}
+
+How to answer:
+- Use only the DATA. If it does not cover the question — a period before their
+  records begin, or a detail that is not there — say so plainly and state what
+  you can see instead. Never estimate a number that is not derivable.
+- Show the figures you used, with the currency code. Add them up when the
+  question spans several months, and say which months you added.
+- Two or three sentences. A short list is fine when comparing things.
+- No preamble, no restating the question, no advice unless it was asked for.
+- Plain text. No markdown headings, no bullets unless listing figures.
+
+DATA:
+${JSON.stringify(facts)}`
+
+  const answer = await callGemini<string>({
+    parts: [{ text: prompt }],
+    temperature: 0.1,
+    signal,
+  })
+  return String(answer).trim()
+}

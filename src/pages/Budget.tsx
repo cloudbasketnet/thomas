@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CopyPlus, Gauge, PiggyBank, Plus, Target, Trash2, Wallet } from 'lucide-react'
+import { CopyPlus, Gauge, History, PiggyBank, Plus, Target, Trash2, Wallet } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useStore } from '@/store/useStore'
@@ -8,6 +8,7 @@ import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
 import { compact, money, pct } from '@/lib/format'
 import { budgetsWithSpend, currentMonthLabel, unbudgetedSpend } from '@/lib/selectors'
+import { suggestBudgets } from '@/lib/budgetSuggest'
 
 export default function Budget() {
   const { budgets: rawBudgets, transactions, settings, addBudget, updateBudget, removeBudget, updateSettings } = useStore()
@@ -17,6 +18,15 @@ export default function Budget() {
   // Spend is derived from this month's expenses, so recording one moves the bar.
   const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
   const unbudgeted = useMemo(() => unbudgetedSpend(transactions, rawBudgets), [transactions, rawBudgets])
+  const advice = useMemo(() => suggestBudgets(transactions, rawBudgets), [transactions, rawBudgets])
+  const [dismissedAdvice, setDismissedAdvice] = useState<string[]>([])
+  const openSuggestions = advice.suggestions.filter((s) => !dismissedAdvice.includes(s.name))
+
+  const applySuggestion = (s: (typeof advice.suggestions)[number]) => {
+    if (s.id) updateBudget(s.id, { budget: s.suggested })
+    else addBudget({ name: s.name, icon: '📦', budget: s.suggested, spent: 0, color: '#3b82f6' })
+    setDismissedAdvice((d) => [...d, s.name])
+  }
 
   const totalBudget = budgets.reduce((a, b) => a + b.budget, 0)
   const totalSpent = budgets.reduce((a, b) => a + b.spent, 0)
@@ -58,6 +68,57 @@ export default function Budget() {
         <StatCard label="On Track" value={onTrack ? 'Yes' : 'No'} icon={<Target size={20} />} tint="#8b5cf6"
           footer={<span className={onTrack ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>{onTrack ? 'You are within budget' : 'Over budget this month'}</span>} />
       </div>
+
+      {openSuggestions.length > 0 && (
+        <Card>
+          <CardHead
+            title="Suggested from your history"
+            sub={`Typical monthly spend over the last ${advice.monthsAvailable} complete month${advice.monthsAvailable === 1 ? '' : 's'} — calculated from your own figures, not estimated`}
+            right={
+              <button
+                className="btn-soft h-8 px-3 text-[12px]"
+                onClick={() => openSuggestions.forEach(applySuggestion)}
+              >
+                <History size={13} /> Apply all
+              </button>
+            }
+          />
+          <div className="px-5 pb-5 space-y-2">
+            {openSuggestions.map((s) => (
+              <div
+                key={s.name}
+                className="flex flex-wrap items-center gap-3 rounded-xl border border-[#eef2f8] px-3.5 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-bold text-slate-800">
+                    {s.name}
+                    {!s.id && <span className="chip bg-blue-50 text-blue-700 ml-2">No budget yet</span>}
+                  </p>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Typically {money(s.median)} a month across {s.monthsObserved} month
+                    {s.monthsObserved === 1 ? '' : 's'}
+                    {s.highest > s.median * 1.5 ? `, once as high as ${money(s.highest)}` : ''}.
+                  </p>
+                </div>
+                <p className="text-[12.5px] tabular-nums whitespace-nowrap">
+                  <span className="text-slate-400">{s.id ? money(s.current) : '—'}</span>
+                  <span className="text-slate-400 mx-1.5">→</span>
+                  <b className={s.delta > 0 ? 'text-rose-600' : 'text-emerald-600'}>{money(s.suggested)}</b>
+                </p>
+                <button className="btn-soft h-8 px-3 text-[12px]" onClick={() => applySuggestion(s)}>
+                  Apply
+                </button>
+                <button
+                  onClick={() => setDismissedAdvice((d) => [...d, s.name])}
+                  className="text-[11.5px] text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
         <Card className="xl:col-span-5">

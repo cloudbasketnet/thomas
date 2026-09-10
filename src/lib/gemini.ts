@@ -447,3 +447,111 @@ Rules:
   }
   return { ...parsed, amount: Number(parsed.amount) }
 }
+
+
+// ---------------------------------------------------------------------------
+// Bank / card statement import
+// ---------------------------------------------------------------------------
+
+export interface StatementRow {
+  date: string
+  description: string
+  /** Always positive; `direction` says which way the money went. */
+  amount: number
+  direction: 'debit' | 'credit'
+  balance?: number
+}
+
+export interface ParsedStatement {
+  /** Account name or masked number printed on the statement. */
+  account?: string
+  currency?: string
+  periodStart?: string
+  periodEnd?: string
+  rows: StatementRow[]
+}
+
+const STATEMENT_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    account: { type: 'STRING', description: 'Account name or masked number on the statement.' },
+    currency: { type: 'STRING', enum: CURRENCY_ENUM },
+    periodStart: { type: 'STRING', description: 'yyyy-MM-dd' },
+    periodEnd: { type: 'STRING', description: 'yyyy-MM-dd' },
+    rows: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          date: { type: 'STRING', description: 'yyyy-MM-dd' },
+          description: { type: 'STRING', description: 'Merchant or narration, tidied but not invented.' },
+          amount: { type: 'NUMBER', description: 'Positive value of the movement.' },
+          direction: { type: 'STRING', enum: ['debit', 'credit'] },
+          balance: { type: 'NUMBER', description: 'Running balance if the statement shows one.' },
+        },
+        required: ['date', 'description', 'amount', 'direction'],
+      },
+    },
+  },
+  required: ['rows'],
+}
+
+const STATEMENT_PROMPT = `You are reading a bank or credit card statement.
+
+Extract EVERY transaction row, in the order they appear. For each:
+- date as yyyy-MM-dd. Statements are usually DD/MM/YYYY — read the day first
+  unless that gives an impossible month. If a row shows both a transaction date
+  and a posting date, use the transaction date.
+- description: the merchant or narration, tidied of padding and reference codes
+  but never invented. Keep the merchant name.
+- amount: always POSITIVE.
+- direction: "debit" for money leaving the account (purchases, withdrawals,
+  fees, card spending) and "credit" for money arriving (salary, refunds,
+  transfers in, payments to a card).
+
+Rules that matter:
+- On a CREDIT CARD statement, a purchase is a debit and a payment you made to
+  the card is a credit. Do not flip them.
+- Skip opening and closing balance lines, sub-totals, headers repeated on each
+  page, and any interest-rate or summary boxes. Rows only.
+- Do not merge or split rows, and do not deduplicate — return them exactly as
+  printed, even when two rows look identical.
+- If the year is missing from a row, take it from the statement period.
+- Return an empty rows array if this is not a statement.`
+
+/**
+ * Read a statement into rows. Accepts a PDF or an image; CSV and other text
+ * should be passed through `parseStatementText` instead.
+ */
+export async function parseStatement(
+  dataUrl: string,
+  mimeType: string,
+  signal?: AbortSignal,
+): Promise<ParsedStatement> {
+  const parsed = await callGemini<ParsedStatement>({
+    parts: [{ text: STATEMENT_PROMPT }, filePart(dataUrl, mimeType)],
+    schema: STATEMENT_SCHEMA,
+    signal,
+  })
+  return { ...parsed, rows: Array.isArray(parsed.rows) ? parsed.rows : [] }
+}
+
+/** Same, for CSV or plain-text exports where column layouts vary by bank. */
+export async function parseStatementText(text: string, signal?: AbortSignal): Promise<ParsedStatement> {
+  const prompt = `${STATEMENT_PROMPT}
+
+The statement below is delimited text exported from a bank. Work out which
+columns hold the date, the narration and the amount. Some banks use separate
+debit and credit columns; others use one signed column where a negative number
+means money left the account.
+
+STATEMENT:
+${text}`
+
+  const parsed = await callGemini<ParsedStatement>({
+    parts: [{ text: prompt }],
+    schema: STATEMENT_SCHEMA,
+    signal,
+  })
+  return { ...parsed, rows: Array.isArray(parsed.rows) ? parsed.rows : [] }
+}

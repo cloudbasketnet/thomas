@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react'
 import {
-  ArrowDownCircle, CalendarDays, Download, Receipt, ScanLine, ShieldCheck, Store, Tag, Trash2, Pencil,
+  ArrowDownCircle, CalendarDays, Download, FileSpreadsheet, Receipt, ScanLine, ShieldCheck, Store, Tag, Trash2, Pencil,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, PALETTE, SingleBars } from '@/components/charts/Charts'
 import { TransactionModal } from '@/components/TransactionModal'
 import { BillScanModal } from '@/components/BillScanModal'
+import { StatementImportModal } from '@/components/StatementImportModal'
 import { hasGemini } from '@/lib/gemini'
 import { fmtDate, money, monthLabel, pct } from '@/lib/format'
 import {
@@ -30,6 +31,7 @@ export default function ExpenseReport() {
   const [tab, setTab] = useState<Tab>('overview')
   const [month, setMonth] = useState(CURRENT_MONTH)
   const [scan, setScan] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [q, setQ] = useState('')
@@ -99,9 +101,14 @@ export default function ExpenseReport() {
               <Download size={15} /> Export CSV
             </button>
             {hasGemini && (
-              <button className="btn-ghost" onClick={() => setScan(true)} title="Read a receipt photo with Gemini">
-                <ScanLine size={15} /> Scan Bill
-              </button>
+              <>
+                <button className="btn-ghost" onClick={() => setImportOpen(true)} title="Read a bank or card statement">
+                  <FileSpreadsheet size={15} /> Import Statement
+                </button>
+                <button className="btn-ghost" onClick={() => setScan(true)} title="Read a receipt photo with Gemini">
+                  <ScanLine size={15} /> Scan Bill
+                </button>
+              </>
             )}
             <button
               className="btn-rose"
@@ -438,6 +445,8 @@ export default function ExpenseReport() {
           {hasGemini ? ' Scanned bills land here as expenses and count towards your budget straight away.' : ''}
         </p>
       </div>
+
+      <StatementImportModal open={importOpen} onClose={() => setImportOpen(false)} />
 
       <BillScanModal
         open={scan}

@@ -124,12 +124,23 @@ function SignIn() {
     const res =
       mode === 'in'
         ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signUp({
+            email,
+            password,
+            // Send the confirmation link back to wherever they signed up from,
+            // rather than relying on Supabase's single Site URL — that keeps
+            // localhost and the live domain working from the same project.
+            // Both origins still have to be in the Redirect URLs allow-list.
+            options: { emailRedirectTo: window.location.origin },
+          })
 
     if (res.error) {
       setMsg({ tone: 'error', text: res.error.message })
     } else if (mode === 'up' && !res.data.session) {
-      setMsg({ tone: 'ok', text: 'Account created. Check your inbox to confirm the address, then sign in.' })
+      setMsg({
+        tone: 'ok',
+        text: `Account created. Check ${email} for the confirmation link, then sign in.`,
+      })
     }
     setBusy(false)
   }

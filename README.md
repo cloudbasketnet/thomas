@@ -2,6 +2,8 @@
 
 Personal finance workspace for **Thomas** — money, purchases, expenses, income and accounts in one fast app.
 
+**Live:** <https://www.cloudbasket.net> (Vercel, deployed from `main`)
+
 ## Stack
 
 | Layer | Choice | Why |
@@ -19,13 +21,19 @@ Personal finance workspace for **Thomas** — money, purchases, expenses, income
 
 ### 1. Create the database tables
 
-Open **Supabase → SQL Editor → New query**, paste the whole of
-[`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql), and Run.
+Open **Supabase → SQL Editor → New query** and run every migration in
+[`supabase/migrations/`](supabase/migrations) **in order**:
 
-It creates 12 tables (`settings`, `accounts`, `transactions`, `budgets`, `loans`, `people`, `bills`,
-`documents`, `notes`, `goals`, `purchases`, `price_watch`), plus indexes, `updated_at` triggers, and
-**row level security** on every one — each policy matches `auth.uid() = user_id`, so a signed-in user
-can only ever touch their own rows and the anon key alone reads nothing.
+| Migration | What it does |
+|---|---|
+| `0001_init.sql` | The 12 base tables, indexes, `updated_at` triggers and row level security |
+| `0002_scope_primary_keys.sql` | Keys become `(user_id, id)`. Without it the **second person to sign up fails** |
+| `0003_transaction_purchase_fields.sql` | `store`, `qty`, `warranty_months` on transactions |
+| `0004_categories_and_card_cycles.sql` | `categories` + `subcategories` tables, `subcategory` column, card statement days |
+| `0005_transaction_weight.sql` | `weight` and `weight_unit` on transactions |
+
+Every policy matches `auth.uid() = user_id`, so a signed-in user can only ever touch their own rows
+and the anon key alone reads nothing.
 
 ### 2. Point the app at your project
 
@@ -38,13 +46,35 @@ VITE_SUPABASE_ANON_KEY=<anon key>
 
 Only the **anon** key belongs here. The service_role key bypasses RLS and must never reach the browser.
 
-### 3. Sign in
+### 3. Tell Supabase where the app lives
 
-Run the app and create an account on the sign-in screen. The first sign-in seeds your tables with the
-demo dataset so the dashboard isn't blank; replace it with real figures, or reset from Settings.
+**Supabase → Authentication → URL Configuration.** Confirmation and password-reset emails link to
+whatever is set here, so it must match where the app actually runs:
 
-> Without the env vars the app still runs in **local-only mode** — no sign-in, data persists to
-> localStorage. That makes the UI usable before the database exists.
+- **Site URL** — `https://www.cloudbasket.net`
+- **Redirect URLs** — add `https://www.cloudbasket.net/**`, `https://cloudbasket.net/**` and
+  `http://localhost:5180/**` for local work
+
+Leave this at its default and the links in those emails point somewhere the app is not.
+
+### 4. Optional: bill scanning and spending analysis
+
+Set `GEMINI_API_KEY` (or `VITE_GEMINI_API_KEY`) to enable *Scan Bill* and the AI insights panel.
+Without it both features hide themselves and everything else works unchanged.
+
+> **The key ships inside the browser bundle.** Vite inlines it at build time, so anyone who loads the
+> site can read it — unlike the Supabase anon key, which row level security defends. At minimum,
+> restrict it in **Google Cloud Console → Credentials** to HTTP referrers `cloudbasket.net/*` and
+> `www.cloudbasket.net/*`. The real fix is to move the call behind a Supabase Edge Function so the key
+> stays server-side.
+
+### 5. Sign in
+
+Create an account on the sign-in screen. A new account starts **empty** — add your accounts first,
+then income and expenses. Settings → Categories offers a starter category set.
+
+> Without the Supabase env vars the app still runs in **local-only mode** — no sign-in, data persists
+> to localStorage. That makes the UI usable before the database exists.
 
 ## Run
 
@@ -55,6 +85,18 @@ npm run build    # dist/ — static, deploy anywhere
 npm run preview  # serve the production build
 npm run lint     # tsc type check
 ```
+
+## Deploying
+
+Vercel builds from `main` and serves <https://www.cloudbasket.net>. Environment variables are set in
+**Vercel → Settings → Environment Variables**, and because Vite inlines them at build time a change
+only takes effect on the **next deployment** — set the variable, then redeploy.
+
+| Variable | Needed for |
+|---|---|
+| `VITE_SUPABASE_URL` | Sign-in and cloud sync |
+| `VITE_SUPABASE_ANON_KEY` | Sign-in and cloud sync |
+| `GEMINI_API_KEY` | Bill scanning and the AI insights panel |
 
 ## Features
 

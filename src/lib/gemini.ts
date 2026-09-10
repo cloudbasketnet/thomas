@@ -9,8 +9,14 @@
  */
 import type { Purchase } from '@/types'
 
-const KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined
-const MODEL = (import.meta.env.VITE_GEMINI_MODEL as string | undefined) ?? 'gemini-3.6-flash'
+// Injected by vite.config.ts, which accepts either VITE_GEMINI_API_KEY or
+// GEMINI_API_KEY so the same code works locally and on hosts that will not
+// store a VITE_-prefixed name.
+declare const __GEMINI_API_KEY__: string
+declare const __GEMINI_MODEL__: string
+
+const KEY = __GEMINI_API_KEY__ || undefined
+const MODEL = __GEMINI_MODEL__ || 'gemini-3.6-flash'
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 export const hasGemini = Boolean(KEY)
@@ -93,7 +99,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
  * The API returns 503 under load often enough to be worth retrying.
  */
 export async function scanBill(dataUrl: string, mimeType: string, signal?: AbortSignal): Promise<ScannedBill> {
-  if (!KEY) throw new Error('No Gemini API key — add VITE_GEMINI_API_KEY to .env.local and restart the dev server.')
+  if (!KEY) throw new Error('No Gemini API key — set GEMINI_API_KEY (or VITE_GEMINI_API_KEY) and rebuild.')
 
   const body = {
     contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: toBase64(dataUrl) } }] }],

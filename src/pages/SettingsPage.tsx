@@ -26,7 +26,7 @@ export default function SettingsPage() {
       settings: store.settings, accounts: store.accounts, transactions: store.transactions,
       budgets: store.budgets, loans: store.loans, people: store.people, bills: store.bills,
       documents: store.documents, notes: store.notes, goals: store.goals,
-      purchases: store.purchases, priceWatch: store.priceWatch,
+      priceWatch: store.priceWatch,
     }
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
     const a = document.createElement('a')
@@ -85,7 +85,6 @@ export default function SettingsPage() {
     ['Documents', store.documents.length],
     ['Notes', store.notes.length],
     ['Goals', store.goals.length],
-    ['Purchases', store.purchases.length],
   ] as const
 
   return (

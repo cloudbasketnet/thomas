@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { AlertCircle, Check, FileText, Loader2, ScanLine, Trash2, Upload } from 'lucide-react'
 import { Modal, Field } from '@/components/ui/Modal'
 import { PURCHASE_CATEGORIES, readFileAsDataUrl, scanBill, type ScannedItem } from '@/lib/gemini'
-import { convert, money, TODAY } from '@/lib/format'
-import type { Currency, Purchase } from '@/types'
+import { money, TODAY } from '@/lib/format'
+import type { Account, Currency, Transaction } from '@/types'
 
-const STATUSES: Purchase['status'][] = ['Planned', 'Ordered', 'Delivered', 'Returned']
+const METHODS = ['Bank Transfer', 'Cash', 'Card', 'Credit Card', 'Cheque', 'Auto Debit', 'Online']
 const MAX_MB = 8
 
 interface Row extends ScannedItem {
@@ -17,13 +17,15 @@ export function BillScanModal({
   open,
   onClose,
   people,
+  accounts,
   onAdd,
 }: {
   open: boolean
   onClose: () => void
   people: string[]
-  /** Called once per confirmed line item. */
-  onAdd: (p: Omit<Purchase, 'id'>) => void
+  accounts: Account[]
+  /** Called once per confirmed line item, as an ordinary expense. */
+  onAdd: (t: Omit<Transaction, 'id'>) => void
 }) {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -32,7 +34,8 @@ export function BillScanModal({
   const [rows, setRows] = useState<Row[] | null>(null)
   const [meta, setMeta] = useState({ store: '', date: '', currency: 'AED' as Currency, total: 0 })
   const [person, setPerson] = useState(people[0] ?? 'Me')
-  const [status, setStatus] = useState<Purchase['status']>('Delivered')
+  const [method, setMethod] = useState(METHODS[0])
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
   const abort = useRef<AbortController | null>(null)
 
   // Reset when the modal closes, and drop any in-flight request.
@@ -48,6 +51,7 @@ export function BillScanModal({
   }, [open])
 
   useEffect(() => setPerson(people[0] ?? 'Me'), [people])
+  useEffect(() => setAccountId((id) => id || accounts[0]?.id || ''), [accounts])
 
   const choose = async (f: File | undefined) => {
     if (!f) return
@@ -100,21 +104,25 @@ export function BillScanModal({
     setRows((rs) => (rs ? rs.map((r) => (r.id === id ? { ...r, ...p } : r)) : rs))
 
   const chosen = rows?.filter((r) => r.include && r.item.trim() && r.price > 0) ?? []
-  /** Purchases are stored in AED, so convert whatever the receipt was priced in. */
-  const toAed = (n: number) => Math.round(convert(n, meta.currency, 'AED') * 100) / 100
-  const chosenTotal = chosen.reduce((a, r) => a + toAed(r.price) * r.qty, 0)
+  /** Transactions carry their own currency, so the receipt's is kept as-is. */
+  const lineTotal = (r: Row) => Math.round(r.price * r.qty * 100) / 100
+  const chosenTotal = chosen.reduce((a, r) => a + lineTotal(r), 0)
 
   const confirm = () => {
     for (const r of chosen) {
       onAdd({
-        item: r.item.trim(),
-        store: meta.store.trim() || '—',
-        category: r.category,
-        price: toAed(r.price),
-        qty: r.qty,
+        type: 'expense',
         date: meta.date || TODAY,
+        description: r.item.trim(),
+        category: r.category,
+        accountId,
+        // amount is always the line total; qty is kept so unit price stays recoverable.
+        amount: lineTotal(r),
+        currency: meta.currency,
         person,
-        status,
+        method,
+        store: meta.store.trim() || undefined,
+        qty: r.qty,
         notes: `Scanned from ${file?.name ?? 'a bill'}`,
       })
     }
@@ -135,8 +143,8 @@ export function BillScanModal({
           </button>
           {rows ? (
             <button className="btn-primary disabled:opacity-50" disabled={!chosen.length} onClick={confirm}>
-              <Check size={15} /> Add {chosen.length} purchase{chosen.length === 1 ? '' : 's'}
-              {chosen.length > 0 ? ` · ${money(chosenTotal)}` : ''}
+              <Check size={15} /> Add {chosen.length} expense{chosen.length === 1 ? '' : 's'}
+              {chosen.length > 0 ? ` · ${money(chosenTotal, meta.currency)}` : ''}
             </button>
           ) : (
             <button className="btn-primary disabled:opacity-50" disabled={!file || busy} onClick={extract}>
@@ -207,16 +215,26 @@ export function BillScanModal({
                   <option>USD</option>
                 </select>
               </Field>
-              <Field label="Status">
-                <select className="input" value={status} onChange={(e) => setStatus(e.target.value as Purchase['status'])}>
-                  {STATUSES.map((s) => (
-                    <option key={s}>{s}</option>
+              <Field label="Paid with">
+                <select className="input" value={method} onChange={(e) => setMethod(e.target.value)}>
+                  {METHODS.map((m) => (
+                    <option key={m}>{m}</option>
                   ))}
                 </select>
               </Field>
             </div>
 
             <div className="flex flex-wrap items-end gap-3">
+              <Field label="Account" className="w-52">
+                <select className="input" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                  {accounts.length === 0 && <option value="">No accounts yet</option>}
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Person" className="w-44">
                 <select className="input" value={person} onChange={(e) => setPerson(e.target.value)}>
                   {(people.length ? people : ['Me', 'Family', 'Others']).map((p) => (
@@ -227,7 +245,6 @@ export function BillScanModal({
               {meta.total > 0 && (
                 <p className="text-[11.5px] text-slate-500 pb-2.5">
                   Bill total read as <b className="text-slate-700">{money(meta.total, meta.currency)}</b>
-                  {meta.currency !== 'AED' ? ` · ${money(toAed(meta.total))} at current rates` : ''}
                 </p>
               )}
             </div>
@@ -305,8 +322,8 @@ export function BillScanModal({
             </div>
 
             <p className="text-[11.5px] text-slate-500">
-              Check each row before saving — extraction is accurate but not guaranteed.
-              {meta.currency !== 'AED' ? ' Prices are converted to AED on save.' : ''}
+              Check each row before saving — extraction is accurate but not guaranteed. Each row is saved as an
+              expense, so it counts towards your budget and reports straight away.
             </p>
           </>
         )}

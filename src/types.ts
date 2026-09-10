@@ -28,6 +28,12 @@ export interface Transaction {
   person?: string
   method?: string
   notes?: string
+  /** Merchant the money went to. Drives the by-store breakdown. */
+  store?: string
+  /** Units bought. `amount` is always the line total, so unit price is amount / qty. */
+  qty?: number
+  /** Warranty length in months, for purchases worth tracking afterwards. */
+  warrantyMonths?: number
 }
 
 export interface BudgetCategory {

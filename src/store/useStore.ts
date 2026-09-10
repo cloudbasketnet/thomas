@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Purchase, Settings, Transaction,
+  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Settings, Transaction,
 } from '@/types'
 import {
-  ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, PURCHASES, SETTINGS, TRANSACTIONS,
+  ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, SETTINGS, TRANSACTIONS,
 } from '@/data/seed'
 import { setBaseCurrency, uid } from '@/lib/format'
 import { hasSupabase } from '@/lib/supabase'
@@ -23,7 +23,6 @@ interface State {
   documents: Doc[]
   notes: Note[]
   goals: Goal[]
-  purchases: Purchase[]
   priceWatch: PriceWatch[]
 
   // ---- cloud session
@@ -80,9 +79,6 @@ interface State {
   removeGoal: (id: string) => void
   contributeGoal: (id: string, amount: number) => void
 
-  addPurchase: (p: Omit<Purchase, 'id'>) => void
-  updatePurchase: (id: string, patch: Partial<Purchase>) => void
-  removePurchase: (id: string) => void
 
   addPriceWatch: (p: Omit<PriceWatch, 'id'>) => void
   updatePriceWatch: (id: string, patch: Partial<PriceWatch>) => void
@@ -105,7 +101,6 @@ const seedState = () => ({
   documents: DOCUMENTS,
   notes: NOTES,
   goals: GOALS,
-  purchases: PURCHASES,
   priceWatch: PRICE_WATCH,
 })
 
@@ -174,7 +169,6 @@ export const useStore = create<State>()(
           documents: data.documents,
           notes: data.notes,
           goals: data.goals,
-          purchases: data.purchases,
           priceWatch: data.priceWatch,
           lastSynced: new Date().toISOString(),
           syncError: null,
@@ -324,18 +318,6 @@ export const useStore = create<State>()(
         set({
           goals: patchList<Goal>(get().goals, id, { saved: Math.min(goal.target, goal.saved + amount) }, 'goals'),
         })
-      },
-
-      // ------------------------------------------------------------- purchases
-      addPurchase: (p) => {
-        const item = { ...p, id: uid('pu') }
-        set({ purchases: [item, ...get().purchases] })
-        push('purchases', item)
-      },
-      updatePurchase: (id, patch) => set({ purchases: patchList(get().purchases, id, patch, 'purchases') }),
-      removePurchase: (id) => {
-        set({ purchases: get().purchases.filter((p) => p.id !== id) })
-        drop('purchases', id)
       },
 
       // ----------------------------------------------------------- price watch

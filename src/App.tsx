@@ -5,7 +5,7 @@ import Dashboard from '@/pages/Dashboard'
 import Accounts from '@/pages/Accounts'
 import Income from '@/pages/Income'
 import Expenses from '@/pages/Expenses'
-import Purchases from '@/pages/Purchases'
+import ExpenseReport from '@/pages/ExpenseReport'
 import Budget from '@/pages/Budget'
 import Loans from '@/pages/Loans'
 import People from '@/pages/People'
@@ -29,7 +29,9 @@ export default function App() {
             <Route path="accounts" element={<Accounts />} />
             <Route path="income" element={<Income />} />
             <Route path="expenses" element={<Expenses />} />
-            <Route path="purchases" element={<Purchases />} />
+            <Route path="expense-report" element={<ExpenseReport />} />
+            {/* Purchases merged into the expense report; keep old links working. */}
+            <Route path="purchases" element={<Navigate to="/expense-report" replace />} />
             <Route path="budget" element={<Budget />} />
             <Route path="loans" element={<Loans />} />
             <Route path="people" element={<People />} />

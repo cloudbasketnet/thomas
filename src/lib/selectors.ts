@@ -224,3 +224,68 @@ export function unbudgetedSpend(txns: Transaction[], budgets: BudgetCategory[], 
     .filter((t) => t.type === 'expense' && !matchBudget(t.category, budgets))
     .reduce((a, t) => a + toBase(t.amount, t.currency), 0)
 }
+
+
+// ---------------------------------------------------------------------------
+// Expense report. Purchases used to be a separate table that no total read
+// from; these all work off the same transactions everything else uses.
+// ---------------------------------------------------------------------------
+
+/** Group expenses by merchant for the given month, largest first. */
+export function byStore(txns: Transaction[], month = CURRENT_MONTH) {
+  const map = new Map<string, number>()
+  for (const t of inMonth(txns, month)) {
+    if (t.type !== 'expense') continue
+    const key = (t.store ?? '').trim() || 'Unrecorded'
+    map.set(key, (map.get(key) ?? 0) + toBase(t.amount, t.currency))
+  }
+  return [...map.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
+}
+
+/** Every expense in a month, newest first, with its AED value resolved. */
+export function expenseRows(txns: Transaction[], month = CURRENT_MONTH) {
+  return inMonth(txns, month)
+    .filter((t) => t.type === 'expense')
+    .map((t) => ({ ...t, aed: toBase(t.amount, t.currency) }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+/** Headline numbers for the expense report. */
+export function expenseSummary(txns: Transaction[], month = CURRENT_MONTH) {
+  const rows = expenseRows(txns, month)
+  const total = rows.reduce((a, r) => a + r.aed, 0)
+  const prev = totals(txns, addMonths(month, -1)).expenses
+  const days = new Set(rows.map((r) => r.date)).size
+  const cats = byCategory(txns, 'expense', month)
+  const stores = byStore(txns, month)
+  return {
+    total,
+    count: rows.length,
+    prev,
+    delta: prev ? Math.round(((total - prev) / prev) * 100) : 0,
+    average: rows.length ? total / rows.length : 0,
+    perDay: days ? total / days : 0,
+    topCategory: cats[0],
+    topStore: stores.find((s) => s.name !== 'Unrecorded'),
+    largest: rows.reduce<(typeof rows)[number] | undefined>((m, r) => (!m || r.aed > m.aed ? r : m), undefined),
+  }
+}
+
+/** Warranties still running, soonest to expire first. */
+export function warranties(txns: Transaction[], from: string = TODAY) {
+  return txns
+    .filter((t) => t.type === 'expense' && t.warrantyMonths && t.warrantyMonths > 0)
+    .map((t) => {
+      const start = new Date(t.date + 'T00:00:00')
+      const end = new Date(start)
+      end.setMonth(end.getMonth() + (t.warrantyMonths as number))
+      const iso = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+      return { ...t, expires: iso, days: daysLeft(iso, from) }
+    })
+    .sort((a, b) => a.days - b.days)
+}
+
+/** The last `n` months as yyyy-MM keys, newest first — for the report month picker. */
+export function addMonthsOptions(n = 12) {
+  return Array.from({ length: n }, (_, i) => addMonths(CURRENT_MONTH, -i))
+}

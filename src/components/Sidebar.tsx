@@ -11,7 +11,7 @@ const NAV = [
   { to: '/accounts', label: 'Accounts', icon: Wallet },
   { to: '/income', label: 'Income', icon: PlusCircle },
   { to: '/expenses', label: 'Expenses', icon: MinusCircle },
-  { to: '/purchases', label: 'Purchases', icon: ShoppingBag },
+  { to: '/expense-report', label: 'Expense Report', icon: ShoppingBag },
   { to: '/budget', label: 'Budget', icon: Gauge },
   { to: '/loans', label: 'Loans', icon: Landmark },
   { to: '/people', label: 'People', icon: Users },

@@ -16,7 +16,6 @@ export interface RemoteData {
   documents: any[]
   notes: any[]
   goals: any[]
-  purchases: any[]
   priceWatch: any[]
 }
 

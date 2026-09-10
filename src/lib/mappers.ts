@@ -1,5 +1,5 @@
 import type {
-  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Purchase, Settings, Transaction,
+  Account, Bill, BudgetCategory, Doc, Goal, Loan, Note, Person, PriceWatch, Settings, Transaction,
 } from '@/types'
 
 /** Every syncable collection in the store, and the table that backs it. */
@@ -13,7 +13,6 @@ export const TABLES = {
   documents: 'documents',
   notes: 'notes',
   goals: 'goals',
-  purchases: 'purchases',
   priceWatch: 'price_watch',
 } as const
 
@@ -47,11 +46,15 @@ export const MAPPERS: {
       id: t.id, type: t.type, date: t.date, description: t.description, category: t.category,
       account_id: t.accountId, amount: t.amount, currency: t.currency,
       person: t.person ?? null, method: t.method ?? null, notes: t.notes ?? null,
+      store: t.store ?? null, qty: t.qty ?? null, warranty_months: t.warrantyMonths ?? null,
     }),
     from: (r): Transaction => ({
       id: r.id, type: r.type, date: r.date, description: r.description, category: r.category,
       accountId: r.account_id ?? '', amount: num(r.amount), currency: r.currency,
       person: r.person ?? undefined, method: r.method ?? undefined, notes: r.notes ?? undefined,
+      store: r.store ?? undefined,
+      qty: r.qty == null ? undefined : num(r.qty),
+      warrantyMonths: r.warranty_months == null ? undefined : num(r.warranty_months),
     }),
   },
 
@@ -126,20 +129,6 @@ export const MAPPERS: {
     from: (r): Goal => ({
       id: r.id, name: r.name, target: num(r.target), saved: num(r.saved), deadline: r.deadline,
       icon: r.icon, color: r.color,
-    }),
-  },
-
-  purchases: {
-    to: (p: Purchase) => ({
-      id: p.id, item: p.item, store: p.store, category: p.category, price: p.price, qty: p.qty,
-      date: p.date, person: p.person, status: p.status,
-      warranty_months: p.warrantyMonths ?? null, notes: p.notes ?? null,
-    }),
-    from: (r): Purchase => ({
-      id: r.id, item: r.item, store: r.store, category: r.category, price: num(r.price),
-      qty: num(r.qty, 1), date: r.date, person: r.person, status: r.status,
-      warrantyMonths: r.warranty_months == null ? undefined : num(r.warranty_months),
-      notes: r.notes ?? undefined,
     }),
   },
 

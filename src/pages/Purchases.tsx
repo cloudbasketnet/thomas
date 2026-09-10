@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Clock, Package, Pencil, Plus, ShoppingBag, Trash2, Undo2 } from 'lucide-react'
+import { CheckCircle2, Clock, Package, Pencil, Plus, ScanLine, ShoppingBag, Trash2, Undo2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, PageHeader, Progress, StatCard, statusTone, Empty } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, PALETTE } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
 import { fmtDate, money, pct, TODAY } from '@/lib/format'
+import { BillScanModal } from '@/components/BillScanModal'
+import { hasGemini } from '@/lib/gemini'
 import type { Purchase } from '@/types'
 
 const STATUSES: Purchase['status'][] = ['Planned', 'Ordered', 'Delivered', 'Returned']
@@ -13,6 +15,7 @@ export default function Purchases() {
   const { purchases, people, addPurchase, updatePurchase, removePurchase } = useStore()
   const [filter, setFilter] = useState<'All' | Purchase['status']>('All')
   const [modal, setModal] = useState(false)
+  const [scan, setScan] = useState(false)
   const [editing, setEditing] = useState<Purchase | null>(null)
 
   const list = purchases.filter((p) => (filter === 'All' ? true : p.status === filter))
@@ -42,9 +45,16 @@ export default function Purchases() {
         title="Purchase Management"
         subtitle="Plan, order and track every purchase — with warranty, store and person details."
         actions={
-          <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>
-            <Plus size={15} /> Add Purchase
-          </button>
+          <>
+            {hasGemini && (
+              <button className="btn-ghost" onClick={() => setScan(true)} title="Read a receipt photo with Gemini">
+                <ScanLine size={15} /> Scan Bill
+              </button>
+            )}
+            <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>
+              <Plus size={15} /> Add Manually
+            </button>
+          </>
         }
       />
 
@@ -182,6 +192,13 @@ export default function Purchases() {
         </div>
       </div>
 
+      <BillScanModal
+        open={scan}
+        onClose={() => setScan(false)}
+        people={people.map((x) => x.name)}
+        onAdd={addPurchase}
+      />
+
       <PurchaseModal
         open={modal}
         onClose={() => setModal(false)}
@@ -272,7 +289,7 @@ function PurchaseModal({
         </Field>
         <Field label="Person">
           <select className="input" value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}>
-            {people.map((p) => <option key={p}>{p}</option>)}
+            {(people.length ? people : ['Me', 'Family', 'Others']).map((p) => <option key={p}>{p}</option>)}
           </select>
         </Field>
         <Field label="Warranty (months)"><input className="input" type="number" value={form.warrantyMonths} onChange={(e) => setForm({ ...form, warrantyMonths: e.target.value })} placeholder="12" /></Field>

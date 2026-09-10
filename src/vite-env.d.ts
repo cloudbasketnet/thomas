@@ -16,3 +16,4 @@ interface ImportMeta {
  */
 declare const __GEMINI_API_KEY__: string
 declare const __GEMINI_MODEL__: string
+declare const __GEMINI_FAST_MODEL__: string

@@ -1,9 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Camera, Info, Sparkles, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CalendarDays, Camera, Info, Keyboard, Loader2, Sparkles, Wand2, X } from 'lucide-react'
 import { Modal, Field } from '@/components/ui/Modal'
 import { BillScanModal } from '@/components/BillScanModal'
 import { useStore } from '@/store/useStore'
-import { hasGemini } from '@/lib/gemini'
+import { hasGemini, parseQuickEntry, suggestCategory } from '@/lib/gemini'
+import {
+  buildIndex, historyExamples, suggestFromHistory, validate, type Suggestion,
+} from '@/lib/categorise'
 import { TODAY, fmtDate } from '@/lib/format'
 import { categoriesOf, findCategoryByName, statementFor, subcategoriesOf } from '@/lib/selectors'
 import { WEIGHT_UNITS, type Currency, type Transaction, type TxnType, type WeightUnit } from '@/types'
@@ -29,9 +32,21 @@ export function TransactionModal({
   editing?: Transaction | null
 }) {
   const {
-    accounts, people, categories, subcategories, addTransaction, updateTransaction,
+    accounts, people, categories, subcategories, transactions, settings, addTransaction, updateTransaction,
   } = useStore()
   const [scan, setScan] = useState(false)
+
+  // ---- natural-language entry
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [quickText, setQuickText] = useState('')
+  const [quickBusy, setQuickBusy] = useState(false)
+  const [quickError, setQuickError] = useState<string | null>(null)
+
+  // ---- category suggestion
+  const [suggestion, setSuggestion] = useState<Suggestion | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+  /** Once the category is chosen by hand, stop moving it underneath them. */
+  const touched = useRef(false)
 
   const isIncome = type === 'income'
   const cats = useMemo(() => categoriesOf(categories, type), [categories, type])
@@ -75,6 +90,12 @@ export function TransactionModal({
     } else {
       setForm({ ...blank, category: catNames[0] ?? '', accountId: accounts[0]?.id ?? '' })
     }
+    touched.current = Boolean(editing)
+    setDismissed(false)
+    setSuggestion(null)
+    setQuickOpen(false)
+    setQuickText('')
+    setQuickError(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editing, type])
 
@@ -83,8 +104,117 @@ export function TransactionModal({
   /** Changing category invalidates whatever sub-category was chosen. */
   const setCategory = (name: string) => setForm((f) => ({ ...f, category: name, subcategory: '' }))
 
+  const pickCategory = (name: string) => {
+    touched.current = true
+    setCategory(name)
+  }
+
   const activeCat = findCategoryByName(categories, type, form.category)
   const subs = useMemo(() => subcategoriesOf(subcategories, activeCat?.id), [subcategories, activeCat])
+
+  // What this person has categorised before, used to guess without a network call.
+  const index = useMemo(() => buildIndex(transactions, type), [transactions, type])
+  const optionsForModel = useMemo(
+    () =>
+      (cats.length ? cats : catNames.map((n) => ({ id: n, name: n }))).map((c) => ({
+        name: c.name,
+        subcategories: subcategoriesOf(subcategories, 'id' in c ? (c as { id: string }).id : undefined).map((x) => x.name),
+      })),
+    [cats, catNames, subcategories],
+  )
+
+  /**
+   * Suggest a category from the description. History answers instantly and for
+   * free; the model is only asked when nothing similar has been recorded, and
+   * only after a longer pause so typing does not spend quota.
+   */
+  useEffect(() => {
+    if (!open) return
+    const description = form.description.trim()
+    if (description.length < 3) {
+      setSuggestion(null)
+      return
+    }
+
+    let cancelled = false
+    const controller = new AbortController()
+
+    const local = validate(
+      suggestFromHistory(description, index, form.store),
+      categories, subcategories, type, catNames,
+    )
+    if (local) {
+      setSuggestion(local)
+      return () => { cancelled = true }
+    }
+
+    setSuggestion(null)
+    if (!hasGemini) return () => { cancelled = true }
+
+    const timer = setTimeout(async () => {
+      const guess = await suggestCategory(
+        description, optionsForModel, historyExamples(index), controller.signal,
+      )
+      if (cancelled || !guess || guess.confidence < 0.5) return
+      setSuggestion(
+        validate(
+          { category: guess.category, subcategory: guess.subcategory, confidence: guess.confidence, source: 'token' },
+          categories, subcategories, type, catNames,
+        ) ?? null,
+      )
+    }, 900)
+
+    return () => {
+      cancelled = true
+      controller.abort()
+      clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, form.description, form.store, index, type])
+
+  /** Apply a confident suggestion only while the category is untouched. */
+  useEffect(() => {
+    if (!suggestion || touched.current || dismissed) return
+    if (suggestion.confidence < 0.75) return
+    setForm((f) =>
+      f.category === suggestion.category && (f.subcategory || !suggestion.subcategory)
+        ? f
+        : { ...f, category: suggestion.category, subcategory: suggestion.subcategory ?? '' },
+    )
+  }, [suggestion, dismissed])
+
+  const runQuick = async () => {
+    const text = quickText.trim()
+    if (!text || quickBusy) return
+    setQuickBusy(true)
+    setQuickError(null)
+    try {
+      const parsed = await parseQuickEntry(text, {
+        today: TODAY,
+        currency: settings.baseCurrency,
+        categories: optionsForModel,
+        people: people.length ? people.map((p) => p.name) : DEFAULT_PEOPLE,
+      })
+      touched.current = Boolean(parsed.category)
+      setForm((f) => ({
+        ...f,
+        description: parsed.description || f.description,
+        amount: String(parsed.amount),
+        date: parsed.date || f.date,
+        category: parsed.category || f.category,
+        subcategory: parsed.subcategory ?? '',
+        currency: (parsed.currency as Currency) || f.currency,
+        store: parsed.store ?? f.store,
+        person: parsed.person || f.person,
+        method: parsed.method || f.method,
+      }))
+      setQuickOpen(false)
+      setQuickText('')
+    } catch (e) {
+      setQuickError(e instanceof Error ? e.message : String(e))
+    }
+    setQuickBusy(false)
+  }
 
   const card = accounts.find((a) => a.id === form.accountId)
   const usingCard = form.method === 'Credit Card'
@@ -144,18 +274,67 @@ export function TransactionModal({
         }
       >
         <div className="space-y-4">
-          {/* Scan shortcut — expenses only, and only when a key is configured. */}
-          {!isIncome && !editing && hasGemini && (
-            <div className="rounded-xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 flex flex-wrap items-center gap-3">
-              <button
-                onClick={() => setScan(true)}
-                className="btn bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 h-9"
-              >
-                <Camera size={15} /> Scan with AI
-              </button>
-              <p className="text-[12px] text-slate-600 flex-1 min-w-[180px]">
-                Take a photo of your receipt and we'll fill the details for you.
-              </p>
+          {/* Scan or describe — only when a key is configured. */}
+          {!editing && hasGemini && (
+            <div className="rounded-xl bg-brand-50/70 border border-brand-100 px-3 py-2.5 space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {!isIncome && (
+                  <button
+                    onClick={() => setScan(true)}
+                    className="btn bg-white text-brand-700 border border-brand-200 hover:bg-brand-50 h-9"
+                  >
+                    <Camera size={15} /> Scan with AI
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setQuickOpen((v) => !v)
+                    setQuickError(null)
+                  }}
+                  className={`btn h-9 border ${
+                    quickOpen
+                      ? 'bg-brand-600 text-white border-brand-600'
+                      : 'bg-white text-brand-700 border-brand-200 hover:bg-brand-50'
+                  }`}
+                >
+                  <Keyboard size={15} /> Type it
+                </button>
+                {!quickOpen && (
+                  <p className="text-[12px] text-slate-600 flex-1 min-w-45">
+                    {isIncome
+                      ? 'Describe it in a sentence and we’ll fill the form.'
+                      : 'Photograph the receipt, or just describe it in a sentence.'}
+                  </p>
+                )}
+              </div>
+
+              {quickOpen && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      className="input flex-1 bg-white"
+                      value={quickText}
+                      onChange={(e) => setQuickText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && runQuick()}
+                      placeholder={
+                        isIncome
+                          ? 'e.g. salary 8500 today'
+                          : 'e.g. 240 groceries at Carrefour yesterday'
+                      }
+                      autoFocus
+                    />
+                    <button className="btn-primary disabled:opacity-50" disabled={!quickText.trim() || quickBusy} onClick={runQuick}>
+                      {quickBusy ? <Loader2 size={15} className="animate-spin" /> : <Wand2 size={15} />}
+                      {quickBusy ? 'Reading…' : 'Fill'}
+                    </button>
+                  </div>
+                  {quickError && <p className="text-[11.5px] text-rose-600">{quickError}</p>}
+                  <p className="text-[11px] text-slate-500">
+                    Include the amount. Dates like “yesterday” and “last Friday” are understood, and everything
+                    stays editable below.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -207,7 +386,7 @@ export function TransactionModal({
               <input className="input" type="date" value={form.date} onChange={(e) => set('date', e.target.value)} />
             </Field>
             <Field label="Category">
-              <select className="input" value={form.category} onChange={(e) => setCategory(e.target.value)}>
+              <select className="input" value={form.category} onChange={(e) => pickCategory(e.target.value)}>
                 {catNames.length === 0 && <option value="">No categories yet</option>}
                 {cats.length
                   ? cats.map((c) => (
@@ -218,6 +397,39 @@ export function TransactionModal({
                   : catNames.map((n) => <option key={n}>{n}</option>)}
               </select>
             </Field>
+
+            {suggestion && suggestion.category !== form.category && !dismissed && (
+              <div className="col-span-2 -mt-2 flex flex-wrap items-center gap-2 text-[11.5px]">
+                <Sparkles size={13} className="text-brand-500 shrink-0" />
+                <span className="text-slate-600">
+                  Suggested: <b className="text-slate-800">{suggestion.category}</b>
+                  {suggestion.subcategory ? ` · ${suggestion.subcategory}` : ''}
+                  {suggestion.basis ? (
+                    <span className="text-slate-400"> — like “{suggestion.basis}”</span>
+                  ) : null}
+                </span>
+                <button
+                  onClick={() => {
+                    touched.current = true
+                    setForm((f) => ({
+                      ...f,
+                      category: suggestion.category,
+                      subcategory: suggestion.subcategory ?? '',
+                    }))
+                  }}
+                  className="chip bg-brand-100 text-brand-700 hover:bg-brand-200 cursor-pointer"
+                >
+                  Use
+                </button>
+                <button
+                  onClick={() => setDismissed(true)}
+                  className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                  aria-label="Dismiss suggestion"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
 
             <Field label="Sub-category" className="col-span-2">
               <select

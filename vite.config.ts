@@ -23,6 +23,11 @@ export default defineConfig(({ mode }) => {
     define: {
       __GEMINI_API_KEY__: JSON.stringify(pick('VITE_GEMINI_API_KEY', 'GEMINI_API_KEY')),
       __GEMINI_MODEL__: JSON.stringify(pick('VITE_GEMINI_MODEL', 'GEMINI_MODEL') || 'gemini-3.6-flash'),
+      // Short, frequent calls run here: cheaper, and it draws on its own
+      // per-model daily allowance rather than competing with scanning.
+      __GEMINI_FAST_MODEL__: JSON.stringify(
+        pick('VITE_GEMINI_FAST_MODEL', 'GEMINI_FAST_MODEL') || 'gemini-3.1-flash-lite',
+      ),
     },
     build: {
       rollupOptions: {

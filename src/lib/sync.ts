@@ -3,7 +3,8 @@ import { MAPPERS, TABLES, settingsMapper, type Collection } from '@/lib/mappers'
 import type { Settings } from '@/types'
 import { SETTINGS } from '@/data/seed'
 
-const COLLECTIONS = Object.keys(TABLES) as Collection[]
+/** Every syncable collection. Backups and pushes both derive from this. */
+export const COLLECTIONS = Object.keys(TABLES) as Collection[]
 
 export interface RemoteData {
   settings: Settings

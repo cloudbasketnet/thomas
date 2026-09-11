@@ -6,7 +6,7 @@ import { Field } from '@/components/ui/Modal'
 import { money } from '@/lib/format'
 import { FX } from '@/data/seed'
 import { hasSupabase, supabase } from '@/lib/supabase'
-import { pullAll, pushAll, replaceRemote, wipeRemote } from '@/lib/sync'
+import { COLLECTIONS, pullAll, pushAll, replaceRemote, wipeRemote } from '@/lib/sync'
 import type { Currency } from '@/types'
 
 export default function SettingsPage() {
@@ -22,12 +22,15 @@ export default function SettingsPage() {
   }
 
   const exportJson = () => {
-    const data = {
-      settings: store.settings, accounts: store.accounts, transactions: store.transactions,
-      budgets: store.budgets, loans: store.loans, people: store.people, bills: store.bills,
-      documents: store.documents, notes: store.notes, goals: store.goals,
-      priceWatch: store.priceWatch,
+    // Built from the collection list rather than a hand-written object, so a
+    // collection added later cannot quietly go missing from backups — which is
+    // exactly what happened to categories.
+    const state = useStore.getState() as unknown as Record<string, unknown>
+    const data: Record<string, unknown> = {
+      exportedAt: new Date().toISOString(),
+      settings: store.settings,
     }
+    for (const c of COLLECTIONS) data[c] = state[c] ?? []
     const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
     const a = document.createElement('a')
     a.href = url
@@ -85,6 +88,9 @@ export default function SettingsPage() {
     ['Documents', store.documents.length],
     ['Notes', store.notes.length],
     ['Goals', store.goals.length],
+    ['Price Watch', store.priceWatch.length],
+    ['Categories', store.categories.length],
+    ['Sub-categories', store.subcategories.length],
   ] as const
 
   return (

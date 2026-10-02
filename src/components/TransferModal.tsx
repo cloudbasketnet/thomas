@@ -19,7 +19,7 @@ export interface TransferPreset {
 type Mode = 'move' | 'card' | 'loan' | 'borrow'
 
 const MODES: { key: Mode; label: string; hint: string }[] = [
-  { key: 'move', label: 'Move money', hint: 'Between bank, cash or family accounts' },
+  { key: 'move', label: 'Move money', hint: 'Between bank, cash, card or family accounts — including a cash advance off a card' },
   { key: 'card', label: 'Pay credit card', hint: 'Reduces card debt and the paying account' },
   { key: 'loan', label: 'Repay loan / EMI', hint: 'Principal reduces debt; interest and fees are expenses' },
   { key: 'borrow', label: 'Borrow money', hint: 'Money received from a loan — not income' },
@@ -59,6 +59,13 @@ export function TransferModal({
 
   const asset = useMemo(() => accounts.filter((a) => isAssetAccount(a.type)), [accounts])
   const cards = useMemo(() => accounts.filter((a) => a.type === 'card'), [accounts])
+  /**
+   * Money can also move OUT of a credit card: a cash advance into a bank or
+   * cash account, or a balance transfer onto another card. Both raise what you
+   * owe on the card rather than lowering a balance, which the ledger already
+   * does (`move()` treats a liability's 'out' as debt taken on).
+   */
+  const moveSources = useMemo(() => [...asset, ...cards], [asset, cards])
   const loanAccounts = useMemo(() => accounts.filter((a) => a.type === 'loan'), [accounts])
   const activeLoans = loans.filter((l) => l.status !== 'Closed')
 
@@ -101,7 +108,8 @@ export function TransferModal({
       setFromId(p?.fromAccountId ?? loanAccounts[0]?.id ?? '')
       setToId(asset[0]?.id ?? '')
     } else {
-      setFromId(p?.fromAccountId && asset.some((a) => a.id === p.fromAccountId) ? p.fromAccountId : asset[0]?.id ?? '')
+      const sources = m === 'move' ? moveSources : asset
+      setFromId(p?.fromAccountId && sources.some((a) => a.id === p.fromAccountId) ? p.fromAccountId : sources[0]?.id ?? '')
       const linked = p?.toAccountId ? loans.find((l) => l.accountId === p.toAccountId) : undefined
       setToId(p?.toLoanId ? `loan:${p.toLoanId}` : linked ? `loan:${linked.id}` : p?.toAccountId ?? '')
     }
@@ -115,10 +123,14 @@ export function TransferModal({
     if (m === 'borrow') {
       setFromId(loanAccounts[0]?.id ?? '')
       setToId(asset[0]?.id ?? '')
-    } else if (!asset.some((a) => a.id === fromId)) setFromId(asset[0]?.id ?? '')
+    } else {
+      const sources = m === 'move' ? moveSources : asset
+      if (!sources.some((a) => a.id === fromId)) setFromId(sources[0]?.id ?? '')
+    }
   }
 
   const from = accounts.find((a) => a.id === fromId)
+  const fromIsCard = from?.type === 'card'
   const num = (v: string) => Math.max(0, Number(v) || 0)
   const total = num(amount)
   const cost = mode === 'loan' ? num(interest) + num(fees) : 0
@@ -136,11 +148,22 @@ export function TransferModal({
   const submit = () => {
     if (!canSave || !from) return
     const toLoan = toId.startsWith('loan:')
-    const kind: TransferKind = mode === 'borrow' ? 'drawdown' : mode === 'card' ? 'card_payment' : mode === 'loan' ? 'repayment' : 'transfer'
     const dest = accounts.find((a) => a.id === toId)
     const familyMove = mode === 'move' && Boolean(from.owner) && Boolean(dest?.owner) && from.owner !== dest?.owner
+    // Taking money off a card is borrowing, not moving your own money about:
+    // a cash advance into an account, or a balance transfer onto another card.
+    const cashAdvance = mode === 'move' && fromIsCard && dest?.type !== 'card'
+    const kind: TransferKind =
+      mode === 'borrow' || cashAdvance ? 'drawdown'
+        : mode === 'card' ? 'card_payment'
+          : mode === 'loan' ? 'repayment'
+            : 'transfer'
     const purpose: TransferPurpose =
-      mode === 'borrow' ? 'Loan drawdown' : mode === 'card' ? 'Credit card payment' : mode === 'loan' ? 'Loan payment' : familyMove ? 'Family transfer' : 'Other'
+      mode === 'borrow' ? 'Loan drawdown'
+        : cashAdvance ? 'Cash withdrawal'
+          : mode === 'card' ? 'Credit card payment'
+            : mode === 'loan' ? 'Loan payment'
+              : familyMove ? 'Family transfer' : 'Other'
 
     const payload = {
       date,
@@ -160,10 +183,13 @@ export function TransferModal({
     onClose()
   }
 
-  const fromOptions = mode === 'borrow' ? loanAccounts : asset
+  const fromOptions = mode === 'borrow' ? loanAccounts : mode === 'move' ? moveSources : asset
   const toOptions =
     mode === 'move'
-      ? accounts.filter((a) => a.id !== fromId && isAssetAccount(a.type))
+      ? // Off a card the money can land in an account (a cash advance) or on
+        // another card (a balance transfer). Off an asset account it stays
+        // between accounts — paying a card has its own tab.
+        accounts.filter((a) => a.id !== fromId && (isAssetAccount(a.type) || (fromIsCard && a.type === 'card')))
       : mode === 'card'
         ? cards
         : mode === 'borrow'
@@ -228,7 +254,14 @@ export function TransferModal({
           </Field>
         </div>
 
-        <Field label={mode === 'borrow' ? 'Money received into' : mode === 'loan' ? 'Loan being repaid' : mode === 'card' ? 'Credit card' : 'To account'}>
+        <Field
+          label={
+            mode === 'borrow' ? 'Money received into'
+              : mode === 'loan' ? 'Loan being repaid'
+                : mode === 'card' ? 'Credit card'
+                  : fromIsCard ? 'Money received into' : 'To account'
+          }
+        >
           {mode === 'loan' ? (
             <select className="input" value={toId} onChange={(e) => setToId(e.target.value)}>
               <option value="">Select the loan</option>
@@ -290,10 +323,11 @@ export function TransferModal({
 
         {from && toId && total > 0 && (
           <p className="text-[11.5px] text-slate-600 rounded-xl bg-slate-50 px-3.5 py-2.5 leading-relaxed">
-            {mode === 'borrow' ? (
+            {mode === 'borrow' || (mode === 'move' && fromIsCard) ? (
               <>
-                {money(total, from.currency)} is borrowed on <b>{from.name}</b> (debt goes up) and lands in <b>{destLabel}</b>.
-                It is not income.
+                {money(total, from.currency)} is borrowed on <b>{from.name}</b> (what you owe goes up) and{' '}
+                {mode === 'move' && accounts.find((a) => a.id === toId)?.type === 'card' ? 'pays down' : 'lands in'}{' '}
+                <b>{destLabel}</b>. It is not income.
               </>
             ) : (
               <>

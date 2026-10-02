@@ -92,6 +92,40 @@ test('debt and available credit are reported separately', () => {
   assert.equal(f.owed, 1500)
   assert.equal(f.available, 18500)
 })
+// Money can move OUT of a card too: a cash advance into an account, or a
+// balance transfer onto another card. Both are borrowing, never income.
+const advance = { id: 'ca', date: '2026-09-21', fromAccountId: 'card', toKind: 'account', toId: 'bank', amount: 2000, currency: 'AED', purpose: 'Cash withdrawal', kind: 'drawdown' }
+test('a cash advance off a card raises the debt and puts the money in the bank', () => {
+  const b = bal(accts, [], [advance])
+  assert.equal(b.card, 2000)
+  assert.equal(b.bank, 12000)
+})
+test('a cash advance is not income and adds no expense', () => {
+  const e = plEntries([], [advance], accts)
+  assert.equal(e.length, 0)
+  const sum = summarise(plEntries([], [advance], accts), toAed)
+  assert.equal(sum.income, 0)
+  assert.equal(sum.expenses, 0)
+})
+test('a cash advance is reported as borrowing, not as a card repayment', () => {
+  const d = debtMovements([advance], accts, [], {}, toAed)
+  assert.equal(d.borrowed, 2000)
+  assert.equal(d.cardRepaid, 0)
+})
+test('a balance transfer moves debt from one card to the other, total unchanged', () => {
+  const two = [...accts, acct('card2', 'card')]
+  const bt = { id: 'bt', date: '2026-09-22', fromAccountId: 'card2', toKind: 'account', toId: 'card', amount: 1500, currency: 'AED', purpose: 'Other', kind: 'transfer' }
+  const b = bal(two, [txn('p', 'expense', 1500, 'card')], [bt])
+  assert.equal(b.card, 0)      // paid off by the transfer
+  assert.equal(b.card2, 1500)  // and now owed on the other card
+  assert.equal(b.bank, 10000)  // no cash moved
+})
+test('a cash advance leaves net worth unchanged — the debt matches the cash', () => {
+  const before = netWorthParts({ accounts: withDerivedBalances(accts, [], [], [], fx), loans: [], assetsOwned: 0 }, toAed)
+  const after = netWorthParts({ accounts: withDerivedBalances(accts, [], [advance], [], fx), loans: [], assetsOwned: 0 }, toAed)
+  assert.equal(after.netWorth, before.netWorth)
+})
+
 test('a card refund reduces debt and reverses the spending', () => {
   const t = [txn('p', 'expense', 1500, 'card'), txn('rf', 'income', 400, 'card', { kind: 'refund', refundOf: 'p' })]
   assert.equal(bal(accts, t).card, 1100)

@@ -4,12 +4,13 @@ import { useStore } from '@/store/useStore'
 import { Card, CardHead, Empty, PageHeader, Progress, StatCard, Switch } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { ScheduleEditor, ScheduleView, PayModal } from '@/components/PaymentSchedule'
-import { installmentStatus, scheduleSummary } from '@/lib/schedules'
-import { fmtDate, money, TODAY, uid } from '@/lib/format'
+import { allSchedulesTotal, installmentStatus, scheduleSummary } from '@/lib/schedules'
+import { fmtDate, money, toBase, TODAY, uid } from '@/lib/format'
 import { DEFAULT_THEME } from '@/lib/theme'
 import type { Currency, Installment, Note } from '@/types'
 
 const CATEGORIES = ['Education', 'Home / Rent', 'Insurance', 'Government & Renewals', 'Vehicle', 'Other']
+const CURRENCIES: Currency[] = ['AED', 'INR', 'USD']
 
 const blank = () => ({
   title: '', category: 'Other', person: '', extraCharge: '', autoAddToBudget: true,
@@ -34,17 +35,30 @@ export default function Installments() {
     [plans, txnIds],
   )
 
+  // Each plan's own card reports in that plan's currency. These cards add every
+  // plan together, so each instalment is converted first — a 100,000 rupee plan
+  // is not 100,000 dirhams, and summing the raw figures would say it is.
   const totals = useMemo(() => {
-    let total = 0, paid = 0, outstanding = 0
-    for (const s of summaries.values()) { total += s.total; paid += s.paid; outstanding += s.outstanding }
+    const sums = allSchedulesTotal(plans, TODAY, (id) => txnIds.has(id), toBase)
     const nextDates = [...summaries.values()].map((s) => s.nextDate).filter(Boolean).sort() as string[]
-    return { total, paid, outstanding, next: nextDates[0], active: [...summaries.values()].filter((s) => s.outstanding > 0).length }
-  }, [summaries])
+    return {
+      ...sums,
+      next: nextDates[0],
+      active: [...summaries.values()].filter((s) => s.outstanding > 0).length,
+    }
+  }, [plans, summaries, txnIds])
 
   const openAdd = () => { setEditing(null); setForm(blank()); setSchedule([]); setModal(true) }
   const openEdit = (n: Note) => {
     setEditing(n)
-    setForm({ ...blank(), title: n.title, category: n.category, person: n.person ?? '', extraCharge: n.extraCharge !== undefined ? String(n.extraCharge) : '', autoAddToBudget: n.autoAddToBudget !== false })
+    setForm({
+      ...blank(), title: n.title, category: n.category, person: n.person ?? '',
+      extraCharge: n.extraCharge !== undefined ? String(n.extraCharge) : '',
+      autoAddToBudget: n.autoAddToBudget !== false,
+      // Keep the plan's own currency, so regenerating or adding a row does not
+      // quietly turn a rupee plan into a dirham one.
+      currency: n.schedule?.[0]?.currency ?? 'AED',
+    })
     setSchedule(n.schedule ?? [])
     setModal(true)
   }
@@ -175,7 +189,13 @@ export default function Installments() {
               {people.map((p) => <option key={p.id}>{p.name}</option>)}
             </select>
           </Field>
-          <Field label="Interest / Extra Charge (optional)"><input className="input" type="number" min="0" value={form.extraCharge} onChange={(e) => setForm({ ...form, extraCharge: e.target.value })} /></Field>
+          {/* extraCharge has no currency of its own — it is reported in the schedule's, so show which that is. */}
+          <Field label={`Interest / Extra Charge (optional, ${form.currency})`}>
+            <div className="flex gap-1">
+              <input className="input flex-1 min-w-0" type="number" min="0" value={form.extraCharge} onChange={(e) => setForm({ ...form, extraCharge: e.target.value })} />
+              <span className="input w-[4.4rem] flex items-center justify-center bg-slate-50 text-slate-500 font-semibold">{form.currency}</span>
+            </div>
+          </Field>
           <div className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
             <span className="text-[12.5px] font-semibold text-slate-600">Auto Add to Budget</span>
             <Switch checked={form.autoAddToBudget} onChange={(v) => setForm({ ...form, autoAddToBudget: v })} />
@@ -183,12 +203,25 @@ export default function Installments() {
 
           <div className="col-span-2 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-3.5">
             <p className="text-[11.5px] font-bold text-brand-800 mb-2 flex items-center gap-1.5"><Sparkles size={13} /> Auto-create the schedule</p>
-            <div className="grid grid-cols-4 gap-2">
-              <input className="input h-9" type="number" min="0" placeholder="Total amount" value={form.genTotal} onChange={(e) => setForm({ ...form, genTotal: e.target.value })} />
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <div className="flex gap-1">
+                <input className="input h-9 flex-1 min-w-0" type="number" min="0" placeholder="Total amount" value={form.genTotal} onChange={(e) => setForm({ ...form, genTotal: e.target.value })} />
+                <select
+                  className="input h-9 w-[4.4rem] px-1"
+                  value={form.currency}
+                  title="Currency for every instalment generated"
+                  onChange={(e) => setForm({ ...form, currency: e.target.value as Currency })}
+                >
+                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
               <input className="input h-9" type="number" min="1" placeholder="No. of installments" value={form.genCount} onChange={(e) => setForm({ ...form, genCount: e.target.value })} />
               <input className="input h-9" type="date" value={form.genStart} onChange={(e) => setForm({ ...form, genStart: e.target.value })} />
               <button type="button" className="btn-soft h-9" onClick={generate}>Generate</button>
             </div>
+            <p className="mt-1.5 text-[10.5px] text-slate-500">
+              Every instalment is created in this currency. Each one can still be changed on its own below.
+            </p>
           </div>
 
           <div className="col-span-2 border-t border-[#eef2f8] pt-4">

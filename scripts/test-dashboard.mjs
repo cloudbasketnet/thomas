@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { actionCentre, addDays, cashFlow, dailySpend, duePayments, safeToSpend } from '../src/lib/dashboard.ts'
 import { askableFaces, pickFace, sceneUsable } from '../src/lib/sceneLock.ts'
+import { allSchedulesTotal } from '../src/lib/schedules.ts'
 
 let n = 0
 const test = (name, fn) => {
@@ -149,6 +150,38 @@ test('only things that actually need attention are listed, each with a real coun
 })
 test('nothing outstanding means an empty list, not a zero-count row', () => {
   assert.deepEqual(actionCentre([], [], [], () => false, TODAY), [])
+})
+
+console.log('\nInstalment totals across currencies')
+const RATE = { AED: 1, INR: 0.0434, USD: 3.6725 }
+const toBase = (n, c) => n * RATE[c]
+const plan = (id, rows) => ({ id, title: id, category: 'Family', dueDate: '2026-11-01', status: 'Pending', done: false, schedule: rows })
+
+test('a rupee plan is converted before it is added to a dirham one', () => {
+  const t = allSchedulesTotal(
+    [
+      plan('aed', [{ id: 'a1', label: 'A', dueDate: '2026-11-01', amount: 1000, currency: 'AED' }]),
+      plan('inr', [{ id: 'b1', label: 'B', dueDate: '2026-11-01', amount: 100000, currency: 'INR' }]),
+    ],
+    TODAY, () => false, toBase,
+  )
+  // 100,000 INR is 4,340 AED — not another 100,000.
+  assert.equal(t.total, 5340)
+  assert.equal(t.outstanding, 5340)
+})
+test('what has been paid is converted too, and the paid amount beats the planned one', () => {
+  const rows = [
+    { id: 'p1', label: 'Paid', dueDate: '2026-10-01', amount: 100000, currency: 'INR', paidTxnId: 'tx1', paidAmount: 50000 },
+    { id: 'p2', label: 'Due', dueDate: '2026-11-01', amount: 100000, currency: 'INR' },
+  ]
+  const t = allSchedulesTotal([plan('inr', rows)], TODAY, (id) => id === 'tx1', toBase)
+  assert.equal(t.total, 8680)   // 200,000 INR
+  assert.equal(t.paid, 2170)    // the 50,000 INR actually paid, not the 100,000 planned
+  assert.equal(t.outstanding, 6510)
+})
+test('nothing recorded is zero, not NaN', () => {
+  assert.deepEqual(allSchedulesTotal([], TODAY, () => false, toBase), { total: 0, paid: 0, outstanding: 0 })
+  assert.deepEqual(allSchedulesTotal([plan('x', undefined)], TODAY, () => false, toBase), { total: 0, paid: 0, outstanding: 0 })
 })
 
 console.log('\nPhoto security lock')

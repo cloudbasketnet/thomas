@@ -1,4 +1,4 @@
-import type { Installment, Note } from '@/types'
+import type { Currency, Installment, Note } from '@/types'
 
 export type InstallmentStatus = 'Planned' | 'Paid' | 'Overdue'
 
@@ -46,4 +46,27 @@ export function dueReminders(notes: Note[], today: string, txnExists: (id: strin
     }
   }
   return out.sort((a, b) => a.days - b.days)
+}
+
+/**
+ * Every plan added together, in ONE currency. A plan's own card reports in that
+ * plan's currency, but these figures span plans, so each instalment is
+ * converted first: 100,000 rupees is not 100,000 dirhams, and adding the raw
+ * figures would claim it is. `toBase` is injected so this file stays pure.
+ */
+export function allSchedulesTotal(
+  notes: Note[],
+  today: string,
+  txnExists: (id: string) => boolean,
+  toBase: (amount: number, currency: Currency) => number,
+) {
+  let total = 0
+  let paid = 0
+  for (const n of notes) {
+    for (const i of n.schedule ?? []) {
+      total += toBase(i.amount, i.currency)
+      if (installmentStatus(i, today, txnExists) === 'Paid') paid += toBase(i.paidAmount ?? i.amount, i.currency)
+    }
+  }
+  return { total: r2(total), paid: r2(paid), outstanding: r2(Math.max(0, total - paid)) }
 }

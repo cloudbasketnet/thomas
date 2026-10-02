@@ -326,7 +326,7 @@ export interface SettingsExtra {
   /** Net worth at the previous visit, to show the change since then. */
   lastVisit?: { date: string; netWorth: number; prev?: { date: string; netWorth: number } }
   /** Step-2 login security verification. Off by default until questions exist and this is not explicitly false. */
-  security?: { enabled: boolean }
+  security?: { enabled: boolean; scene?: SecurityScene }
   /** Planned budget for a future month (yyyy-MM → base-currency amount), overriding the flat monthly budget in the Financial Forecast. */
   futureBudgets?: Record<string, number>
   /** Planned/expected income for a future month (yyyy-MM → base-currency amount), overriding the averaged estimate in the Financial Forecast. */
@@ -337,6 +337,54 @@ export interface SettingsExtra {
   customTags?: string[]
   /** Account ids to show in the Add Expense/Income "Paid from" picker. Empty/unset = show every eligible account. */
   quickPickAccountIds?: string[]
+  /** The bank account pinned to the dashboard's Favourite Bank dial. */
+  favouriteAccountId?: string
+  /** The card pinned to the dashboard's Credit Card Balance dial. */
+  favouriteCardId?: string
+  /** A monthly spending limit the user set for one account (id → base-currency amount). Never guessed. */
+  accountLimits?: Record<string, number>
+  /** Days of daily-spending history shown on the dashboard chart. */
+  dailyChartDays?: number
+}
+
+/**
+ * One person marked on the Photo Security Lock scene (see screenshot: "Set a
+ * Question for Each Person"). The box is stored NORMALISED (0–1) against the
+ * scene photo, so the same marker lands in the right place at any size.
+ */
+export interface SceneFace {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  /** Cropped head-shot of this person, taken from the scene photo itself. */
+  thumb?: string
+  /** The personal memory question whose answer is this person, e.g. "Who taught me to ride a bicycle?". */
+  question?: string
+  /** Only enabled faces with a question are ever asked at login. */
+  enabled: boolean
+}
+
+/**
+ * The Photo Security Lock: one scene photo, the people marked on it, and the
+ * question that identifies each of them.
+ *
+ * This is checked ON THE DEVICE, not on the server — it is a presence lock
+ * that stops someone who picks up an already signed-in device, not a second
+ * password. The server-checked question model (verification_questions + the
+ * security-verify edge function) is the stronger one and still applies when no
+ * scene is configured. src/lib/security.ts says which is in use and why.
+ */
+export interface SecurityScene {
+  /** The scene photo as a data URL. */
+  photo: string
+  faces: SceneFace[]
+  /** Pick a different saved question at every login. */
+  randomQuestion: boolean
+  /** Try not to repeat the question used at the previous login on this device. */
+  avoidRepeatLast: boolean
+  updatedAt?: string
 }
 
 export interface Settings {

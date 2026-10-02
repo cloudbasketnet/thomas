@@ -318,7 +318,7 @@ const TABS = [
   { key: 'rates', label: 'Currency & Rates' },
   { key: 'family', label: 'Family Users' },
   { key: 'security', label: 'Security' },
-  { key: 'verification', label: 'Verification Questions' },
+  { key: 'verification', label: 'Login Lock' },
   { key: 'seo', label: 'SEO & Analytics' },
 ] as const
 

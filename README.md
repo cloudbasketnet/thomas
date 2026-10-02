@@ -20,19 +20,20 @@ Personal and family finance, household shopping and asset management in one priv
 ### 1. Database — run every migration in order
 
 **Supabase → SQL Editor → New query**, run each file in [`supabase/migrations/`](supabase/migrations) in order.
-`0015_cloudbasket360_v2.sql` is the current one. It is **additive** (nothing is dropped or rewritten) and safe
+`0018_goal_currency.sql` is the current one. They are **additive** (nothing is dropped or rewritten) and safe
 to re-run.
 
 | Migration | Adds |
 |---|---|
 | `0001`–`0014` | Base tables, per-user keys, categories, transfers, budgets, advisor personas… |
+| `0016`–`0018` | Login-lock questions and attempt log · instalment extras · planned income sources · savings/investment accounts · a savings goal's own currency |
 | `0015_cloudbasket360_v2.sql` | Opening balances, credit limits, bank styles · transaction kinds (refund, asset purchase), receipts, brand / pack size · interest & fees on transfers · loan ↔ loan-account link · assets, valuations, gold rates · smart-budget items and note payment schedules · document files · **family users with row-level permissions** · private storage bucket · public `site_config` |
 
 > The app detects whether 0015 has been applied (`public.schema_info`). Until it has, it keeps working in a
 > compatibility mode (old columns only) and shows a "Database update needed" notice, so deploying the code
 > before running the migration is safe. Themes, gold rates, files, family users and the like need 0015.
 
-### 2. Family-user edge function
+### 2. Edge functions
 
 Creating a login needs the service-role key, which must never reach a browser, so it lives in
 [`supabase/functions/family-admin`](supabase/functions/family-admin/index.ts):
@@ -43,6 +44,16 @@ supabase functions deploy family-admin      # SUPABASE_URL / SERVICE_ROLE_KEY ar
 
 The function verifies the caller from their token, refuses anyone who is themselves a family member, and only
 touches members belonging to that owner.
+
+`security-verify` does the same job for the **server-checked** login questions, so the right answer never reaches
+a browser before it answers:
+
+```bash
+supabase functions deploy security-verify
+```
+
+This one is optional. Without it the **Photo Security Lock** still works (it is checked on the device) and
+**Settings → Login Lock → Lock status** says so rather than letting sign-in through in silence.
 
 ### 3. Environment
 
@@ -93,6 +104,18 @@ documents with private cloud upload, preview, download and links · **Assets & P
 valuation history · **gold valuation** (weight × purity × rate) · **Family Advisor** with your profile · family users
 with permissions · themes · SEO & analytics.
 
+The **dashboard** adds, on top of the summary cards: **safe to spend** (balance less this month's commitments and
+the monthly share of your goals) · **daily expenses** over 7/14/30 days · a **favourite bank** dial with an optional
+monthly limit · a **credit-card** dial with limit, available credit and the statement due date · **instalments &
+due dates** across loans, bills and payment schedules · **expense categories** · a **30-day cash-flow projection**
+(recorded days solid, the estimate dashed) · **recent transactions** · an **action centre** of what is waiting on
+you · and an **insight** card built from your own figures, with no AI call.
+
+The **login lock** (Settings → Login Lock) has two models. The **Photo Security Lock** takes one scene photo of
+your own, finds or lets you mark the people on it, and gives each of them a personal memory question; at sign-in
+one question is asked and you tap the right face. It needs nothing deployed. The older **server-checked questions**
+use the People library and the `security-verify` edge function, so the answer is never in the browser.
+
 ## Deploying
 
 Pushing to `main` deploys to Vercel. Vite inlines environment variables at build time, so change them in
@@ -122,4 +145,9 @@ nothing from the app is ever sent to them. Indexing takes time and rankings are 
 - Only the anon key is bundled; row level security makes it useless without a session.
 - Family permissions (per section and per account) are enforced **in the database**, verified by `npm run test:rls`.
 - Files live in a private bucket under `<owner id>/…` and open through short-lived signed links.
+- The **Photo Security Lock is checked on the device**: the scene and its answers live in `settings.extra`, which
+  every household member can already read. It stops someone who picks up an already signed-in phone or laptop — it
+  is not a second password. Deploy `security-verify` and use Active questions when you need an answer the browser
+  never sees. **Settings → Login Lock → Lock status** runs the whole thing end to end and names whichever part is
+  missing.
 - If a service-role key is ever exposed, rotate it in **Supabase → Settings → API**.

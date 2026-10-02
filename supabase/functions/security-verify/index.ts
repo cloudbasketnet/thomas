@@ -68,14 +68,30 @@ Deno.serve(async (req) => {
       let pool = excludeId ? all.filter((q) => q.id !== excludeId) : all
       if (!pool.length) pool = all
 
+      // avoid_repeat_last: skip whichever question was shown most recently, as
+      // long as something else is available. This was stored but never applied,
+      // so the same question could come up login after login.
+      if (pool.length > 1 && pool.some((q) => q.avoid_repeat_last !== false)) {
+        const mostRecent = [...pool]
+          .filter((q) => q.last_used_at)
+          .sort((a, b) => (b.last_used_at ?? '').localeCompare(a.last_used_at ?? ''))[0]
+        if (mostRecent) {
+          const narrowed = pool.filter((q) => q.id !== mostRecent.id)
+          if (narrowed.length) pool = narrowed
+        }
+      }
+
       const anyRandomize = pool.some((q) => q.randomize !== false)
       const picked = anyRandomize
         ? pool[Math.floor(Math.random() * pool.length)]
         : [...pool].sort((a, b) => (a.last_used_at ?? '').localeCompare(b.last_used_at ?? ''))[0]
 
-      const ids: string[] = [picked.correct_person_id, ...(Array.isArray(picked.other_person_ids) ? picked.other_person_ids : [])]
-      const want = Math.max(2, Math.min(picked.number_of_choices ?? 12, ids.length))
-      const limitedIds = ids.slice(0, want)
+      // Pick the decoys at random rather than always taking the first few, so
+      // the same faces do not accompany a question every single time.
+      const others: string[] = (Array.isArray(picked.other_person_ids) ? picked.other_person_ids : [])
+        .filter((id: string) => id !== picked.correct_person_id)
+      const want = Math.max(2, Math.min(picked.number_of_choices ?? 12, others.length + 1))
+      const limitedIds = [picked.correct_person_id, ...shuffle(others).slice(0, want - 1)]
 
       const peopleRes = await admin.from('people').select('id, name, photo').eq('user_id', ownerId).in('id', limitedIds)
       if (peopleRes.error) return json({ error: peopleRes.error.message }, 400)

@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  Check, Copy, Eye, Loader2, Pencil, Plus, Shield, ShieldCheck, Shuffle, Trash2, Users,
+  AlertTriangle, Check, Copy, Eye, Loader2, Pencil, Plus, Shield, ShieldCheck, Shuffle, Stethoscope,
+  Trash2, Users, X,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, PageHeader, StatCard, Switch, Badge, Empty } from '@/components/ui/Primitives'
 import { Field, Modal } from '@/components/ui/Modal'
 import { listVerificationAttempts } from '@/lib/sync'
+import { PhotoSecurityLock } from '@/components/PhotoSecurityLock'
+import { diagnoseLock, sceneUsable, type LockCheck, type LockState } from '@/lib/security'
 import type { Person, VerificationAttempt, VerificationQuestion } from '@/types'
 
 const SCENES = ['Airport', 'Office', 'Family Gathering', 'Wedding', 'School', 'Neighbourhood']
@@ -105,8 +108,8 @@ export function VerificationTab() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Verification Questions"
-        subtitle="Manage rotating security questions and face answers shown at step 2 of login."
+        title="Login Lock"
+        subtitle="The question asked at step 2 of every sign-in — a photo of your own, or the People library."
         actions={
           <div className="flex items-center gap-2.5">
             <span className="text-[12px] font-semibold text-slate-500">Require at login</span>
@@ -115,10 +118,15 @@ export function VerificationTab() {
         }
       />
 
+      <LockStatus />
+
+      <PhotoSecurityLock />
+
       {!schemaV3 && (
         <div className="card px-4 py-3 bg-brand-50 border-brand-200 text-[12.5px] text-brand-900">
           Run <b>supabase/migrations/0016_security_verification.sql</b> and deploy the{' '}
-          <b>security-verify</b> edge function to store and use these questions.
+          <b>security-verify</b> edge function to store and use the question list below. The Photo Security Lock above
+          needs neither — it is saved with your settings.
         </div>
       )}
 
@@ -132,7 +140,7 @@ export function VerificationTab() {
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-[1.4fr_1fr] items-start">
         {/* ---- question list ---- */}
         <Card>
-          <CardHead title={`All Questions (${verificationQuestions.length})`} right={<button className="btn-primary h-9" onClick={openAdd}><Plus size={14} /> Add Question</button>} />
+          <CardHead title={`Server-checked Questions (${verificationQuestions.length})`} sub="Used when no Photo Security Lock is set up. Needs the security-verify edge function." right={<button className="btn-primary h-9" onClick={openAdd}><Plus size={14} /> Add Question</button>} />
           <div className="px-5 pb-5 overflow-x-auto">
             {verificationQuestions.length === 0 ? (
               <Empty text="No questions yet — add one and select who the correct answer is." />
@@ -324,5 +332,91 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
       <span className="text-[12px] text-slate-600">{label}</span>
       {children}
     </div>
+  )
+}
+
+/**
+ * Lock status — runs the whole lock end to end and says exactly what is and is
+ * not working. The old behaviour was to let a failed check through in silence,
+ * so a lock that had quietly stopped asking looked identical to one that was
+ * never set up.
+ */
+function LockStatus() {
+  const ownerId = useStore((s) => s.ownerId ?? s.userId)
+  const scene = useStore((s) => s.settings.extra?.security?.scene)
+  const enabled = useStore((s) => s.settings.extra?.security?.enabled) !== false
+  const [result, setResult] = useState<{ state: LockState; checks: LockCheck[] } | null>(null)
+  const [running, setRunning] = useState(false)
+
+  const run = async () => {
+    setRunning(true)
+    try {
+      setResult(await diagnoseLock(ownerId ?? null))
+    } catch (e) {
+      setResult({
+        state: { required: false, mode: 'off', ownerId: ownerId ?? null, reason: e instanceof Error ? e.message : String(e) },
+        checks: [{ label: 'Check failed', ok: false, detail: e instanceof Error ? e.message : String(e) }],
+      })
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  // What we can say without calling anything — the live answer comes from Run check.
+  const willAsk = enabled && sceneUsable(scene)
+
+  return (
+    <Card>
+      <CardHead
+        title="Lock status"
+        sub="Whether anyone is actually asked a question when they sign in."
+        right={
+          <button className="btn-ghost h-9" onClick={run} disabled={running}>
+            {running ? <Loader2 size={14} className="animate-spin" /> : <Stethoscope size={14} />} Run check
+          </button>
+        }
+      />
+      <div className="px-5 pb-5 space-y-3">
+        {!result && (
+          <p className="text-[12.5px] text-slate-500">
+            {!enabled
+              ? 'The lock is switched off above, so sign-in goes straight through.'
+              : willAsk
+                ? 'A Photo Security Lock is saved, so a question is asked at sign-in. Run the check to confirm it end to end.'
+                : 'No Photo Security Lock is saved. Run the check to see whether a server-checked question applies instead.'}
+          </p>
+        )}
+
+        {result && (
+          <>
+            <div
+              className={`rounded-xl px-4 py-3 text-[13px] font-semibold ${
+                result.state.required ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-700'
+              }`}
+            >
+              {result.state.required ? 'A question IS asked at sign-in.' : 'Nothing is asked at sign-in right now.'}
+              <p className="mt-0.5 text-[11.5px] font-normal opacity-90">{result.state.reason}</p>
+            </div>
+            <ul className="space-y-2">
+              {result.checks.map((c) => (
+                <li key={c.label} className="flex items-start gap-2.5">
+                  <span
+                    className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${
+                      c.ok === true ? 'bg-emerald-100 text-emerald-700' : c.ok === 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                    }`}
+                  >
+                    {c.ok === true ? <Check size={12} strokeWidth={3} /> : c.ok === 'warn' ? <AlertTriangle size={11} /> : <X size={12} strokeWidth={3} />}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[12.5px] font-semibold text-slate-700">{c.label}</p>
+                    <p className="text-[11.5px] leading-relaxed text-slate-500">{c.detail}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+    </Card>
   )
 }

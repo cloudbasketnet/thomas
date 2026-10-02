@@ -7,6 +7,11 @@ import {
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, Badge, Progress, StatCard, ViewAll, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend, IncomeExpenseBars } from '@/components/charts/Charts'
+import {
+  ActionCentreCard, CashFlowCard, CreditCardCard, DailyExpensesCard, DuePaymentsCard,
+  ExpenseCategoriesCard, FavouriteBankCard, InsightCard, RecentTransactionsCard, SafeToSpendBar,
+  SavingsGoalCard,
+} from '@/components/dashboard/Widgets'
 import { TransactionModal } from '@/components/TransactionModal'
 import { TransferModal } from '@/components/TransferModal'
 import { TODAY, convert, daysLeft, fmtDate, money, pct } from '@/lib/format'
@@ -80,6 +85,8 @@ export default function Dashboard() {
           </button>
         </div>
       )}
+
+      <SafeToSpendBar />
 
       {/* Stat cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
@@ -162,6 +169,18 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Daily spending + the account you watch most */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+        <DailyExpensesCard />
+        <FavouriteBankCard />
+      </div>
+
+      {/* Card balance + everything with a date on it */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+        <CreditCardCard />
+        <DuePaymentsCard />
+      </div>
+
       {/* Charts row */}
       <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
         <Card className="xl:col-span-5">
@@ -231,6 +250,18 @@ export default function Dashboard() {
             </div>
           </div>
         </Card>
+      </div>
+
+      {/* Where the money is going, and where it is heading */}
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+        <CashFlowCard />
+        <ExpenseCategoriesCard />
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+        <RecentTransactionsCard />
+        <ActionCentreCard />
+        <InsightCard />
       </div>
 
       {/* Loans + converter + documents */}
@@ -420,35 +451,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-3">
-          <CardHead title="Savings Goals" right={<ViewAll to="/goals" />} />
-          <div className="px-5 pb-5 space-y-4">
-            {goals.length === 0 && (
-              <p className="text-[12.5px] text-slate-400 py-6 text-center">No savings goals yet.</p>
-            )}
-            {goals.slice(0, 4).map((g) => (
-              <div key={g.id} className="flex items-center gap-3">
-                <span
-                  className="h-9 w-9 rounded-xl grid place-items-center text-[15px] shrink-0"
-                  style={{ background: `${g.color}1a` }}
-                >
-                  {g.icon}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-bold text-slate-800 truncate">{g.name}</p>
-                  <p className="text-[11px] text-slate-400 mb-1.5 tabular-nums">
-                    {g.saved.toLocaleString()} / {g.target.toLocaleString()}
-                  </p>
-                  <Progress value={g.saved} max={g.target} color={g.color} height={6} />
-                </div>
-                <span className="text-[11px] font-bold text-slate-500 tabular-nums">{pct(g.saved, g.target)}%</span>
-              </div>
-            ))}
-            <Link to="/goals" className="btn-soft w-full">
-              <Plus size={14} /> Add New Goal
-            </Link>
-          </div>
-        </Card>
+        <SavingsGoalCard className="xl:col-span-3" />
       </div>
 
       {/* Reports strip */}

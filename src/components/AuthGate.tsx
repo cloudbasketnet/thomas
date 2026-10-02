@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { hasSupabase, supabase } from '@/lib/supabase'
 import { pullAll, resolveSession, type SessionContext } from '@/lib/sync'
-import { verificationRequired } from '@/lib/security'
+import { resolveLock, type LockState } from '@/lib/security'
 import { SignInScreen } from '@/components/SignInScreen'
 import { SecurityVerification } from '@/components/SecurityVerification'
 import { stopAnalytics } from '@/lib/analytics'
@@ -31,6 +31,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const loadedFor = useRef<string | null>(null)
   // The resolved session, held while step 2 (security verification) is shown.
   const pendingSession = useRef<SessionContext | null>(null)
+  // Which lock model answered for this login — see src/lib/security.ts.
+  const pendingLock = useRef<LockState | null>(null)
   const finishRef = useRef<((session: SessionContext) => Promise<void>) | null>(null)
 
   // ---- watch the Supabase session -----------------------------------------
@@ -97,13 +99,16 @@ export function AuthGate({ children }: { children: ReactNode }) {
         }
 
         // Step 2: a security question, once per browser tab per sign-in.
+        // resolveLock() never throws: it reports which lock applies, falling
+        // back to a browser-checked one when the edge function is unavailable
+        // rather than letting every login straight through in silence.
         const already = sessionStorage.getItem(verifiedKey(userId)) === '1'
         if (!already) {
-          let required = false
-          try { required = await verificationRequired() } catch { required = false } // fail open — never brick sign-in
+          const lock = await resolveLock(session.ownerId)
           if (cancelled) return
-          if (required) {
+          if (lock.required) {
             pendingSession.current = session
+            pendingLock.current = lock
             setPhase('verifying')
             return
           }
@@ -162,6 +167,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (phase === 'verifying')
     return (
       <SecurityVerification
+        lock={pendingLock.current}
         onVerified={() => {
           const userId = useStore.getState().userId
           if (userId) sessionStorage.setItem(verifiedKey(userId), '1')

@@ -10,9 +10,10 @@ import { hasGemini, parseQuickEntry, suggestCategory } from '@/lib/gemini'
 import {
   buildIndex, historyExamples, suggestFromHistory, validate, type Suggestion,
 } from '@/lib/categorise'
-import { TODAY, fmtDate } from '@/lib/format'
+import { TODAY, fmtDate, money } from '@/lib/format'
 import { categoriesOf, findCategoryByName, statementFor, subcategoriesOf } from '@/lib/selectors'
 import { depositAccounts, methodFor, paymentAccounts } from '@/lib/accounting'
+import { cardFigures } from '@/lib/ledger'
 import { styleFor, maskNumber } from '@/data/banks'
 import {
   PACK_UNITS, WEIGHT_UNITS, type Account, type Currency, type PackUnit, type Person, type Transaction, type TxnKind,
@@ -843,10 +844,42 @@ function AccountPicker({
             </div>
             <p className="text-[10px] opacity-80 truncate mt-0.5">{a.name}</p>
             {number && <p className="text-[10.5px] font-mono opacity-90 mt-1.5 tracking-wide">{number}</p>}
+            <AccountFigure account={a} />
           </button>
         )
       })}
     </ScrollRow>
+  )
+}
+
+/**
+ * What this account is worth to the person choosing it. A card's balance is
+ * what you OWE, so showing it as "balance" would read backwards — the useful
+ * figure when spending is the credit still available, with the debt beside it.
+ * A limit is never assumed: without one there is no available credit to show.
+ */
+function AccountFigure({ account }: { account: Account }) {
+  const rows: { label: string; value: string }[] = []
+
+  if (account.type === 'card') {
+    const f = cardFigures(account)
+    if (f.available !== undefined) rows.push({ label: 'Available', value: money(f.available, account.currency) })
+    rows.push({ label: f.credit > 0 ? 'In credit' : 'Owed', value: money(f.credit > 0 ? f.credit : f.owed, account.currency) })
+  } else if (account.type === 'loan') {
+    rows.push({ label: 'Owed', value: money(Math.max(0, account.balance), account.currency) })
+  } else {
+    rows.push({ label: 'Balance', value: money(account.balance, account.currency) })
+  }
+
+  return (
+    <div className="mt-1.5 border-t border-current/20 pt-1.5 space-y-0.5">
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-baseline justify-between gap-1">
+          <span className="text-[9px] uppercase tracking-wide opacity-70">{r.label}</span>
+          <span className="text-[11px] font-bold tabular-nums truncate">{r.value}</span>
+        </div>
+      ))}
+    </div>
   )
 }
 

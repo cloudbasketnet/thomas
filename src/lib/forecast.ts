@@ -100,3 +100,74 @@ export function forecastSuggestions(months: ForecastMonth[], monthLabel: (ym: st
   if (deficits.length) out.push(`${deficits.length} of the next ${months.length} months ${deficits.length > 1 ? 'are' : 'is'} expected to run a deficit: ${deficits.map((m) => monthLabel(m.month)).join(', ')}.`)
   return out.slice(0, 6)
 }
+
+// ---------------------------------------------------------------------------
+// Where this month actually stands
+// ---------------------------------------------------------------------------
+
+export interface MonthPosition {
+  /** Money you can spend right now (cash, bank, savings, investment). */
+  balance: number
+  /** The month's expense budget that has not been spent yet. */
+  budgetLeft: number
+  loanEmi: number
+  installments: number
+  otherPlanned: number
+  /** Everything still to pay before the month ends. */
+  remaining: number
+  /** What is left once all of it is paid. Negative means it does not cover. */
+  balanceAfter: number
+  /** How much more has to come in before the month is covered. 0 when it already is. */
+  extraNeeded: number
+  covered: boolean
+  /** Share of the balance already spoken for, 0–1. */
+  reservedShare: number
+  /** Items still only suggested, not yet approved — included above, counted here so it can be said. */
+  suggestedCount: number
+}
+
+/**
+ * The current month's real position.
+ *
+ * Planned income is deliberately NOT added: until a salary actually lands it
+ * cannot pay a bill, so counting it here would show money that does not exist.
+ * The six-month table is the place for planned income, because those months
+ * have not happened yet.
+ */
+export function currentMonthPosition(i: {
+  balance: number
+  budget: number
+  /** Everything already spent this month, in the reporting currency. */
+  spentSoFar: number
+  items: MonthItem[]
+  toReport: (amount: number, currency: Currency) => number
+}): MonthPosition {
+  const live = i.items.filter((it) => it.status !== 'Dismissed' && it.status !== 'Paid')
+  const sum = (kinds: MonthItem['sourceKind'][]) =>
+    live
+      .filter((it) => kinds.includes(it.sourceKind))
+      .reduce((n, it) => n + (it.amount !== undefined ? i.toReport(it.amount, it.currency) : 0), 0)
+
+  // Spending already done comes out of the budget, so what is left is what the
+  // rest of the month still needs — never the whole month's budget again.
+  const budgetLeft = Math.max(0, i.budget - i.spentSoFar)
+  const loanEmi = sum(['loan'])
+  const installments = sum(['schedule'])
+  const otherPlanned = sum(['bill', 'document', 'note', 'manual'])
+  const remaining = budgetLeft + loanEmi + installments + otherPlanned
+  const balanceAfter = i.balance - remaining
+
+  return {
+    balance: i.balance,
+    budgetLeft,
+    loanEmi,
+    installments,
+    otherPlanned,
+    remaining,
+    balanceAfter,
+    extraNeeded: Math.max(0, -balanceAfter),
+    covered: balanceAfter >= 0,
+    reservedShare: i.balance > 0 ? Math.min(1, remaining / i.balance) : remaining > 0 ? 1 : 0,
+    suggestedCount: live.filter((it) => it.status === 'Suggested').length,
+  }
+}

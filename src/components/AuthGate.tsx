@@ -182,43 +182,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {hasSupabase && !schemaV2 && (
-        <div className="fixed bottom-4 left-4 z-50 card px-4 py-3 max-w-sm bg-brand-50 border-brand-200 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-brand-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[12.5px] font-bold text-brand-900">Database update needed</p>
-            <p className="text-[11.5px] text-brand-800 mt-0.5">
-              Run <b>supabase/migrations/0015_cloudbasket360_v2.sql</b> in the Supabase SQL Editor to switch on
-              the new features. Until then everything keeps working as before.
-            </p>
-          </div>
-        </div>
-      )}
-      {hasSupabase && schemaV2 && !schemaV3 && (
-        <div className="fixed bottom-4 left-4 z-50 card px-4 py-3 max-w-sm bg-brand-50 border-brand-200 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-brand-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[12.5px] font-bold text-brand-900">Security Verification not set up yet</p>
-            <p className="text-[11.5px] text-brand-800 mt-0.5">
-              Run <b>supabase/migrations/0016_security_verification.sql</b> and deploy{' '}
-              <b>supabase functions deploy security-verify</b> to turn on the step-2 login question. Everything else
-              keeps working as before.
-            </p>
-          </div>
-        </div>
-      )}
-      {hasSupabase && schemaV3 && !schemaV4 && (
-        <div className="fixed bottom-4 left-4 z-50 card px-4 py-3 max-w-sm bg-brand-50 border-brand-200 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-brand-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[12.5px] font-bold text-brand-900">Database update needed</p>
-            <p className="text-[11.5px] text-brand-800 mt-0.5">
-              Run <b>supabase/migrations/0018_goal_currency.sql</b> to save a savings goal's own currency. Until then
-              goals keep syncing in AED as before.
-            </p>
-          </div>
-        </div>
-      )}
+      <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} />
       {error && (
         <div className="fixed bottom-4 right-4 z-50 card px-4 py-3 max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
           <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -231,5 +195,63 @@ export function AuthGate({ children }: { children: ReactNode }) {
       )}
       {children}
     </>
+  )
+}
+
+/**
+ * Which migrations this database is still missing.
+ *
+ * Previously there were three separate notices, each naming only the next file,
+ * so a database several versions behind told you about one migration, then
+ * another after a reload. They are detected together, so they are listed
+ * together — a database that is up to date shows nothing at all.
+ */
+function MigrationNotice({
+  supabase, schemaV2, schemaV3, schemaV4,
+}: {
+  supabase: boolean
+  schemaV2: boolean
+  schemaV3: boolean
+  schemaV4: boolean
+}) {
+  if (!supabase || schemaV4) return null
+
+  const pending: { file: string; adds: string }[] = []
+  if (!schemaV2) pending.push({ file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, smart budget, family users' })
+  if (!schemaV3) pending.push({ file: '0016_security_verification.sql', adds: 'login-lock questions, instalment extras, planned income' })
+  // 0017 carries no version stamp of its own, so it is listed whenever the
+  // database is behind 0018. Every migration is safe to re-run.
+  pending.push({ file: '0017_savings_investment_accounts.sql', adds: 'savings and investment account types' })
+  pending.push({ file: '0018_goal_currency.sql', adds: "a savings goal's own currency" })
+
+  return (
+    <div className="fixed bottom-4 left-4 z-50 card max-w-sm bg-brand-50 border-brand-200 px-4 py-3">
+      <div className="flex items-start gap-2.5">
+        <AlertCircle size={16} className="text-brand-600 mt-0.5 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[12.5px] font-bold text-brand-900">
+            {pending.length} database update{pending.length === 1 ? '' : 's'} to run
+          </p>
+          <p className="text-[11.5px] text-brand-800 mt-0.5">
+            In <b>Supabase → SQL Editor</b>, run these from <b>supabase/migrations/</b> in order. Each one is additive
+            and safe to re-run; everything keeps working meanwhile.
+          </p>
+          <ul className="mt-1.5 space-y-1">
+            {pending.map((m) => (
+              <li key={m.file} className="text-[11px] text-brand-800">
+                <b className="font-mono text-[10.5px]">{m.file}</b>
+                <span className="text-brand-700"> — {m.adds}</span>
+              </li>
+            ))}
+          </ul>
+          {!schemaV3 && (
+            <p className="text-[11px] text-brand-700 mt-1.5">
+              Optional: <b>supabase functions deploy security-verify</b> for a server-checked login question. The Photo
+              Security Lock works without it.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }

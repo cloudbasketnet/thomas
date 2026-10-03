@@ -76,12 +76,76 @@ export function allSchedulesTotal(
 // ---------------------------------------------------------------------------
 
 /**
- * Which figure the user actually knows:
- *  - 'total'   the whole commitment, split evenly across the instalments
- *  - 'monthly' what is paid each month; the total follows from it
- * A fee letter usually gives one or the other, rarely both.
+ * A plan is three numbers — the total, the monthly payment and how many months
+ * — and knowing any TWO gives the third. Which two you have depends on what
+ * you were told: a fee letter gives a total and a term, a loan gives a total
+ * and an EMI, a subscription gives a monthly figure and a term.
  */
-export type GenerateMode = 'total' | 'monthly'
+export type GenerateMode = 'total-count' | 'total-monthly' | 'monthly-count'
+
+/** Nobody has a real plan longer than this, and it stops a tiny EMI building a runaway schedule. */
+export const MAX_INSTALLMENTS = 600
+
+export interface ResolvedPlan {
+  count: number
+  /** The regular monthly payment. */
+  per: number
+  total: number
+  /** The final payment. Smaller than `per` when the figures do not divide evenly. */
+  last: number
+  /** True when the two figures given imply more instalments than are allowed. */
+  capped: boolean
+  /** False until both figures this mode needs have been entered. */
+  valid: boolean
+}
+
+const EMPTY: ResolvedPlan = { count: 0, per: 0, total: 0, last: 0, capped: false, valid: false }
+const positive = (n: number | undefined): n is number => typeof n === 'number' && Number.isFinite(n) && n > 0
+
+/**
+ * Work the plan out from whichever two figures are known.
+ *
+ * Where it does not divide evenly the LAST instalment carries the difference,
+ * so the schedule always adds up to the total rather than quietly coming to
+ * less than the fee. The one exception is 'monthly-count', where the monthly
+ * figure is what was agreed — every payment is that amount and the total
+ * follows from it.
+ */
+export function resolvePlan(mode: GenerateMode, i: { total?: number; monthly?: number; count?: number }): ResolvedPlan {
+  const count = Math.max(1, Math.round(i.count ?? 0) || 0)
+
+  if (mode === 'monthly-count') {
+    if (!positive(i.monthly) || !positive(i.count)) return EMPTY
+    const per = r2(i.monthly)
+    const n = Math.min(count, MAX_INSTALLMENTS)
+    return { count: n, per, total: r2(per * n), last: per, capped: count > MAX_INSTALLMENTS, valid: true }
+  }
+
+  if (mode === 'total-count') {
+    if (!positive(i.total) || !positive(i.count)) return EMPTY
+    const n = Math.min(count, MAX_INSTALLMENTS)
+    const per = r2(i.total / n)
+    return { count: n, per, total: r2(i.total), last: r2(i.total - per * (n - 1)), capped: count > MAX_INSTALLMENTS, valid: true }
+  }
+
+  // total-monthly: the months are what you do not know.
+  if (!positive(i.total) || !positive(i.monthly)) return EMPTY
+  const per = r2(i.monthly)
+  // A monthly payment larger than the total is simply one payment of the total.
+  const needed = Math.ceil(r2(i.total) / per)
+  const n = Math.min(Math.max(1, needed), MAX_INSTALLMENTS)
+  const capped = needed > MAX_INSTALLMENTS
+  return {
+    count: n,
+    per,
+    total: r2(i.total),
+    // The final payment is whatever is left, which is how a last instalment
+    // usually works: 10,000 at 3,000 a month is 3,000 x 3 then 1,000.
+    last: capped ? per : r2(i.total - per * (n - 1)),
+    capped,
+    valid: !capped,
+  }
+}
 
 /** Add `n` months to a yyyy-MM-dd date, keeping it inside the target month. */
 export function addMonthsClamped(date: string, n: number): string {
@@ -98,9 +162,9 @@ export function addMonthsClamped(date: string, n: number): string {
 
 export interface GenerateInput {
   mode: GenerateMode
-  /** The total, or the monthly amount — whichever `mode` says. */
-  amount: number
-  count: number
+  total?: number
+  monthly?: number
+  count?: number
   /** First due date, yyyy-MM-dd. */
   start: string
   currency: Currency
@@ -108,33 +172,17 @@ export interface GenerateInput {
   makeId: () => string
 }
 
-/**
- * Build an evenly spaced monthly schedule. In 'total' mode the instalments add
- * up to exactly the total — the rounding remainder goes on the last one rather
- * than being dropped, so the plan can never quietly come to less than the fee.
- */
+/** Build the evenly spaced monthly schedule the figures describe. */
 export function generateSchedule(i: GenerateInput): Installment[] {
-  const count = Math.max(1, Math.round(i.count) || 1)
-  if (!Number.isFinite(i.amount) || i.amount <= 0) return []
+  const plan = resolvePlan(i.mode, { total: i.total, monthly: i.monthly, count: i.count })
+  if (!plan.valid) return []
 
-  const per = i.mode === 'monthly' ? r2(i.amount) : r2(i.amount / count)
-  const total = i.mode === 'monthly' ? r2(per * count) : r2(i.amount)
-
-  return Array.from({ length: count }, (_, k) => ({
+  return Array.from({ length: plan.count }, (_, k) => ({
     id: i.makeId(),
     label: `Installment ${k + 1}`,
     dueDate: addMonthsClamped(i.start, k),
-    amount: k === count - 1 ? r2(total - per * (count - 1)) : per,
+    amount: k === plan.count - 1 ? plan.last : plan.per,
     currency: i.currency,
     remindDays: i.remindDays ?? 7,
   }))
-}
-
-/** The other figure, for the hint under the inputs. Returns 0 when nothing is entered yet. */
-export function generatePreview(mode: GenerateMode, amount: number, count: number) {
-  const n = Math.max(1, Math.round(count) || 1)
-  if (!Number.isFinite(amount) || amount <= 0) return { per: 0, total: 0, count: n }
-  return mode === 'monthly'
-    ? { per: r2(amount), total: r2(amount * n), count: n }
-    : { per: r2(amount / n), total: r2(amount), count: n }
 }

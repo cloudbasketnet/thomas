@@ -335,6 +335,8 @@ export interface SettingsExtra {
   aiEmployees?: AIEmployee[]
   /** User-created quick-fill tags offered in Add Expense, beyond what purchase history already suggests. */
   customTags?: string[]
+  /** Categories the user added to the Installments plan picker, on top of the built-in ones. */
+  installmentCategories?: string[]
   /** Account ids to show in the Add Expense/Income "Paid from" picker. Empty/unset = show every eligible account. */
   quickPickAccountIds?: string[]
   /** The bank account pinned to the dashboard's Favourite Bank dial. */

@@ -9,7 +9,9 @@ import { fmtDate, money, toBase, TODAY, uid } from '@/lib/format'
 import { DEFAULT_THEME } from '@/lib/theme'
 import type { Currency, Installment, Note } from '@/types'
 
-const CATEGORIES = ['Education', 'Home / Rent', 'Insurance', 'Government & Renewals', 'Vehicle', 'Other']
+/** Built in, always offered. The user's own are kept in settings.extra.installmentCategories. */
+const BUILT_IN_CATEGORIES = ['Education', 'Home / Rent', 'Insurance', 'Government & Renewals', 'Vehicle', 'Other']
+const ADD_CATEGORY = '__add_category__'
 const CURRENCIES: Currency[] = ['AED', 'INR', 'USD']
 
 /** Which two figures you have. The third is worked out — see resolvePlan(). */
@@ -28,7 +30,7 @@ const blank = () => ({
 })
 
 export default function Installments() {
-  const { notes, people, transactions, settings, addNote, updateNote, removeNote, payInstallment } = useStore()
+  const { notes, people, transactions, settings, addNote, updateNote, removeNote, payInstallment, updateSettings } = useStore()
   const catColor = (settings.extra?.theme?.categoryColors ?? DEFAULT_THEME.categoryColors).installment
   const txnIds = useMemo(() => new Set(transactions.map((t) => t.id)), [transactions])
   const plans = useMemo(() => notes.filter((n) => (n.schedule?.length ?? 0) > 0), [notes])
@@ -38,7 +40,41 @@ export default function Installments() {
   const [schedule, setSchedule] = useState<Installment[]>([])
   const [form, setForm] = useState(blank())
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [newCategory, setNewCategory] = useState<string | null>(null) // null = not adding
   const [payFor, setPayFor] = useState<{ note: Note; inst: Installment } | null>(null)
+
+  /**
+   * Built-in categories, the user's own, and anything an existing plan already
+   * uses — so editing an older plan never silently drops its category just
+   * because it is not on the list any more.
+   */
+  const categoryOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const c of [
+      ...BUILT_IN_CATEGORIES,
+      ...(settings.extra?.installmentCategories ?? []),
+      ...notes.map((n) => n.feeCategory ?? '').filter(Boolean),
+    ]) {
+      const name = c.trim()
+      if (!name || seen.has(name.toLowerCase())) continue
+      seen.add(name.toLowerCase())
+      out.push(name)
+    }
+    return out
+  }, [settings.extra?.installmentCategories, notes])
+
+  const addCategory = (raw: string) => {
+    const name = raw.trim()
+    if (!name) return
+    const existing = categoryOptions.find((c) => c.toLowerCase() === name.toLowerCase())
+    if (!existing) {
+      const own = settings.extra?.installmentCategories ?? []
+      updateSettings({ extra: { ...settings.extra, installmentCategories: [...own, name] } })
+    }
+    setForm((f) => ({ ...f, category: existing ?? name }))
+    setNewCategory(null)
+  }
 
   const summaries = useMemo(
     () => new Map(plans.map((n) => [n.id, scheduleSummary(n, TODAY, (id) => txnIds.has(id))])),
@@ -58,7 +94,7 @@ export default function Installments() {
     }
   }, [plans, summaries, txnIds])
 
-  const openAdd = () => { setEditing(null); setForm(blank()); setSchedule([]); setModal(true) }
+  const openAdd = () => { setEditing(null); setForm(blank()); setSchedule([]); setNewCategory(null); setModal(true) }
   const openEdit = (n: Note) => {
     setEditing(n)
     setForm({
@@ -70,6 +106,7 @@ export default function Installments() {
       currency: n.schedule?.[0]?.currency ?? 'AED',
     })
     setSchedule(n.schedule ?? [])
+    setNewCategory(null)
     setModal(true)
   }
 
@@ -184,9 +221,39 @@ export default function Installments() {
             <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. School Fee" autoFocus />
           </Field>
           <Field label="Category">
-            <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-              {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-            </select>
+            {newCategory === null ? (
+              <select
+                className="input"
+                value={form.category}
+                onChange={(e) => {
+                  if (e.target.value === ADD_CATEGORY) setNewCategory('')
+                  else setForm({ ...form, category: e.target.value })
+                }}
+              >
+                {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value={ADD_CATEGORY}>+ Add a category…</option>
+              </select>
+            ) : (
+              <div className="flex gap-1.5">
+                <input
+                  className="input flex-1 min-w-0"
+                  autoFocus
+                  placeholder="e.g. School Bus"
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { e.preventDefault(); addCategory(newCategory) }
+                    if (e.key === 'Escape') setNewCategory(null)
+                  }}
+                />
+                <button type="button" className="btn-primary h-9 px-3" disabled={!newCategory.trim()} onClick={() => addCategory(newCategory)}>
+                  Add
+                </button>
+                <button type="button" className="btn-ghost h-9 px-3" onClick={() => setNewCategory(null)}>
+                  Cancel
+                </button>
+              </div>
+            )}
           </Field>
           <Field label="Person (who it is for)">
             <select className="input" value={form.person} onChange={(e) => setForm({ ...form, person: e.target.value })}>

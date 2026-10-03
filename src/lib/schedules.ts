@@ -70,3 +70,71 @@ export function allSchedulesTotal(
   }
   return { total: r2(total), paid: r2(paid), outstanding: r2(Math.max(0, total - paid)) }
 }
+
+// ---------------------------------------------------------------------------
+// Building a schedule from a few figures
+// ---------------------------------------------------------------------------
+
+/**
+ * Which figure the user actually knows:
+ *  - 'total'   the whole commitment, split evenly across the instalments
+ *  - 'monthly' what is paid each month; the total follows from it
+ * A fee letter usually gives one or the other, rarely both.
+ */
+export type GenerateMode = 'total' | 'monthly'
+
+/** Add `n` months to a yyyy-MM-dd date, keeping it inside the target month. */
+export function addMonthsClamped(date: string, n: number): string {
+  const y = Number(date.slice(0, 4))
+  const m = Number(date.slice(5, 7)) - 1
+  const day = Number(date.slice(8, 10))
+  // The 31st of a month has no counterpart in November, and letting the date
+  // roll over would push that instalment into the month after the one it
+  // belongs to. Clamp it to the last day instead.
+  const lastDay = new Date(y, m + n + 1, 0).getDate()
+  const d = new Date(y, m + n, Math.min(day, lastDay))
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+export interface GenerateInput {
+  mode: GenerateMode
+  /** The total, or the monthly amount — whichever `mode` says. */
+  amount: number
+  count: number
+  /** First due date, yyyy-MM-dd. */
+  start: string
+  currency: Currency
+  remindDays?: number
+  makeId: () => string
+}
+
+/**
+ * Build an evenly spaced monthly schedule. In 'total' mode the instalments add
+ * up to exactly the total — the rounding remainder goes on the last one rather
+ * than being dropped, so the plan can never quietly come to less than the fee.
+ */
+export function generateSchedule(i: GenerateInput): Installment[] {
+  const count = Math.max(1, Math.round(i.count) || 1)
+  if (!Number.isFinite(i.amount) || i.amount <= 0) return []
+
+  const per = i.mode === 'monthly' ? r2(i.amount) : r2(i.amount / count)
+  const total = i.mode === 'monthly' ? r2(per * count) : r2(i.amount)
+
+  return Array.from({ length: count }, (_, k) => ({
+    id: i.makeId(),
+    label: `Installment ${k + 1}`,
+    dueDate: addMonthsClamped(i.start, k),
+    amount: k === count - 1 ? r2(total - per * (count - 1)) : per,
+    currency: i.currency,
+    remindDays: i.remindDays ?? 7,
+  }))
+}
+
+/** The other figure, for the hint under the inputs. Returns 0 when nothing is entered yet. */
+export function generatePreview(mode: GenerateMode, amount: number, count: number) {
+  const n = Math.max(1, Math.round(count) || 1)
+  if (!Number.isFinite(amount) || amount <= 0) return { per: 0, total: 0, count: n }
+  return mode === 'monthly'
+    ? { per: r2(amount), total: r2(amount * n), count: n }
+    : { per: r2(amount / n), total: r2(amount), count: n }
+}

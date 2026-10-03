@@ -4,7 +4,7 @@ import { useStore } from '@/store/useStore'
 import { Card, CardHead, Empty, PageHeader, Progress, StatCard, Switch } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { ScheduleEditor, ScheduleView, PayModal } from '@/components/PaymentSchedule'
-import { allSchedulesTotal, installmentStatus, scheduleSummary } from '@/lib/schedules'
+import { allSchedulesTotal, generatePreview, generateSchedule, installmentStatus, scheduleSummary, type GenerateMode } from '@/lib/schedules'
 import { fmtDate, money, toBase, TODAY, uid } from '@/lib/format'
 import { DEFAULT_THEME } from '@/lib/theme'
 import type { Currency, Installment, Note } from '@/types'
@@ -14,7 +14,9 @@ const CURRENCIES: Currency[] = ['AED', 'INR', 'USD']
 
 const blank = () => ({
   title: '', category: 'Other', person: '', extraCharge: '', autoAddToBudget: true,
-  genTotal: '', genCount: '4', genStart: TODAY, currency: 'AED' as Currency,
+  // genAmount is read as the whole fee or as one month's payment, per genMode —
+  // a fee letter gives one or the other, rarely both.
+  genMode: 'total' as GenerateMode, genAmount: '', genCount: '4', genStart: TODAY, currency: 'AED' as Currency,
 })
 
 export default function Installments() {
@@ -63,20 +65,14 @@ export default function Installments() {
     setModal(true)
   }
 
-  // "Total AED 3,000, monthly AED 500, start 15 Oct" → the schedule itself, evenly split.
+  // "AED 3,000 over 4 months" or "AED 500 a month for 4", start 15 Oct → the schedule.
+  const preview = generatePreview(form.genMode, Number(form.genAmount), Number(form.genCount))
   const generate = () => {
-    const total = Number(form.genTotal)
-    const count = Math.max(1, Math.round(Number(form.genCount)) || 1)
-    if (!total || total <= 0) return
-    const per = Math.round((total / count) * 100) / 100
-    const start = new Date(form.genStart + 'T00:00:00')
-    const rows: Installment[] = Array.from({ length: count }, (_, i) => {
-      const d = new Date(start)
-      d.setMonth(d.getMonth() + i)
-      const dueDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const amount = i === count - 1 ? Math.round((total - per * (count - 1)) * 100) / 100 : per
-      return { id: uid('in'), label: `Installment ${i + 1}`, dueDate, amount, currency: form.currency, remindDays: 7 }
+    const rows: Installment[] = generateSchedule({
+      mode: form.genMode, amount: Number(form.genAmount), count: Number(form.genCount),
+      start: form.genStart, currency: form.currency, makeId: () => uid('in'),
     })
+    if (!rows.length) return
     setSchedule(rows)
   }
 
@@ -203,9 +199,33 @@ export default function Installments() {
 
           <div className="col-span-2 rounded-xl border border-dashed border-brand-200 bg-brand-50/40 p-3.5">
             <p className="text-[11.5px] font-bold text-brand-800 mb-2 flex items-center gap-1.5"><Sparkles size={13} /> Auto-create the schedule</p>
+            {/* Which figure you actually have: the whole fee, or one month's payment. */}
+            <div className="mb-2 flex rounded-lg border border-[#dbe4f3] bg-white p-0.5 w-fit">
+              {([
+                { k: 'total' as GenerateMode, label: 'I know the total' },
+                { k: 'monthly' as GenerateMode, label: 'I know the monthly amount' },
+              ]).map((o) => (
+                <button
+                  key={o.k}
+                  type="button"
+                  onClick={() => setForm({ ...form, genMode: o.k })}
+                  className={`h-7 px-3 rounded-md text-[11.5px] font-semibold cursor-pointer transition ${form.genMode === o.k ? 'bg-brand-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
               <div className="flex gap-1">
-                <input className="input h-9 flex-1 min-w-0" type="number" min="0" placeholder="Total amount" value={form.genTotal} onChange={(e) => setForm({ ...form, genTotal: e.target.value })} />
+                <input
+                  className="input h-9 flex-1 min-w-0"
+                  type="number"
+                  min="0"
+                  placeholder={form.genMode === 'monthly' ? 'Monthly amount' : 'Total amount'}
+                  value={form.genAmount}
+                  onChange={(e) => setForm({ ...form, genAmount: e.target.value })}
+                />
                 <select
                   className="input h-9 w-[4.4rem] px-1"
                   value={form.currency}
@@ -217,10 +237,25 @@ export default function Installments() {
               </div>
               <input className="input h-9" type="number" min="1" placeholder="No. of installments" value={form.genCount} onChange={(e) => setForm({ ...form, genCount: e.target.value })} />
               <input className="input h-9" type="date" value={form.genStart} onChange={(e) => setForm({ ...form, genStart: e.target.value })} />
-              <button type="button" className="btn-soft h-9" onClick={generate}>Generate</button>
+              <button type="button" className="btn-soft h-9" onClick={generate} disabled={preview.total <= 0}>Generate</button>
             </div>
+
             <p className="mt-1.5 text-[10.5px] text-slate-500">
-              Every instalment is created in this currency. Each one can still be changed on its own below.
+              {preview.total > 0 ? (
+                <>
+                  <b className="text-slate-700">
+                    {preview.count} × {money(preview.per, form.currency)} = {money(preview.total, form.currency)}
+                  </b>
+                  , monthly from {fmtDate(form.genStart)}.{' '}
+                </>
+              ) : (
+                <>
+                  {form.genMode === 'monthly'
+                    ? 'Enter what is paid each month and how many months — the total follows from it. '
+                    : 'Enter the whole fee and how many months to split it across. '}
+                </>
+              )}
+              Each instalment can still be changed on its own below.
             </p>
           </div>
 

@@ -47,7 +47,7 @@ export default function Bills() {
         actions={<button className="btn-primary" onClick={() => setModal(true)}><Plus size={15} /> Add Bill</button>}
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Monthly Recurring" value={money(monthlyTotal)} icon={<Repeat size={20} />} tint="#3b82f6"
           footer={<span className="text-slate-400">{bills.filter((b) => b.frequency === 'Monthly').length} monthly bills</span>} />
         <StatCard label="Upcoming Total" value={money(s.upcomingTotal)} icon={<CalendarClock size={20} />} tint="#f59e0b"
@@ -58,8 +58,8 @@ export default function Bills() {
           footer={<span className="text-slate-400">{s.overdue.length} bills · {autopayCount} on autopay</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-8">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-8">
           <CardHead
             title="All Bills"
             right={
@@ -137,7 +137,7 @@ export default function Bills() {
           </div>
         </Card>
 
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           <Card>
             <CardHead title="Bills by Category" />
             <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-4">

@@ -231,11 +231,11 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             <span className="h-7 w-7 rounded-lg bg-gradient-to-br from-brand-500 to-cyan-400 grid place-items-center text-white text-[12px] font-bold">
               {settings.userName.charAt(0)}
             </span>
-            <span className="hidden md:block leading-tight text-left">
+            <span className="hidden lg:block leading-tight text-left">
               <span className="block text-[12px] font-bold text-slate-800">{settings.userName}</span>
               <span className="block text-[10px] text-slate-400">{settings.accountLabel}</span>
             </span>
-            <ChevronDown size={13} className="text-slate-400 hidden md:block" />
+            <ChevronDown size={13} className="text-slate-400 hidden lg:block" />
           </button>
 
           {userOpen && (

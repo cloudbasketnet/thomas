@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle, ChevronUp, Loader2, X } from 'lucide-react'
 import { hasSupabase, supabase } from '@/lib/supabase'
 import { pullAll, resolveSession, type SessionContext } from '@/lib/sync'
 import { resolveLock, type LockState } from '@/lib/security'
@@ -182,21 +182,31 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} />
-      {error && (
-        <div className="fixed bottom-4 right-4 z-50 card px-4 py-3 max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
-          <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
-          <div>
-            <p className="text-[12.5px] font-bold text-amber-900">Cloud sync unavailable</p>
-            <p className="text-[11.5px] text-amber-800 mt-0.5">{error}</p>
-            <p className="text-[11.5px] text-amber-700 mt-1">Working from local data for now.</p>
+      {/*
+       * Both notices share one bottom-right stack. They used to sit in opposite
+       * corners, and the left-hand one covered the bottom third of the sidebar
+       * on a docked layout — on a tablet that buried five nav items outright.
+       * Phones get the full width; from sm the stack hugs the right edge.
+       */}
+      <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
+        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} />
+        {error && (
+          <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[12.5px] font-bold text-amber-900">Cloud sync unavailable</p>
+              <p className="text-[11.5px] text-amber-800 mt-0.5">{error}</p>
+              <p className="text-[11.5px] text-amber-700 mt-1">Working from local data for now.</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
       {children}
     </>
   )
 }
+
+const NOTICE_KEY = 'cb_migration_notice_collapsed'
 
 /**
  * Which migrations this database is still missing.
@@ -214,6 +224,8 @@ function MigrationNotice({
   schemaV3: boolean
   schemaV4: boolean
 }) {
+  const [open, setOpen] = useState(() => sessionStorage.getItem(NOTICE_KEY) !== '1')
+
   if (!supabase || schemaV4) return null
 
   const pending: { file: string; adds: string }[] = []
@@ -224,14 +236,36 @@ function MigrationNotice({
   pending.push({ file: '0017_savings_investment_accounts.sql', adds: 'savings and investment account types' })
   pending.push({ file: '0018_goal_currency.sql', adds: "a savings goal's own currency" })
 
+  if (!open)
+    return (
+      <button
+        onClick={() => { setOpen(true); sessionStorage.removeItem(NOTICE_KEY) }}
+        className="pointer-events-auto self-end card bg-brand-50 border-brand-200 px-3 h-9 inline-flex items-center gap-2 text-[12px] font-bold text-brand-900 cursor-pointer"
+      >
+        <AlertCircle size={14} className="text-brand-600" />
+        {pending.length} database update{pending.length === 1 ? '' : 's'}
+        <ChevronUp size={13} className="text-brand-600" />
+      </button>
+    )
+
   return (
-    <div className="fixed bottom-4 left-4 z-50 card max-w-sm bg-brand-50 border-brand-200 px-4 py-3">
+    <div className="pointer-events-auto card w-full sm:max-w-sm bg-brand-50 border-brand-200 px-4 py-3 max-h-[60dvh] overflow-y-auto scroll-thin">
       <div className="flex items-start gap-2.5">
         <AlertCircle size={16} className="text-brand-600 mt-0.5 shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[12.5px] font-bold text-brand-900">
-            {pending.length} database update{pending.length === 1 ? '' : 's'} to run
-          </p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[12.5px] font-bold text-brand-900">
+              {pending.length} database update{pending.length === 1 ? '' : 's'} to run
+            </p>
+            {/* Collapses to a chip — it reappears on the next load until the migrations are actually run. */}
+            <button
+              onClick={() => { setOpen(false); sessionStorage.setItem(NOTICE_KEY, '1') }}
+              aria-label="Collapse"
+              className="-mt-0.5 -mr-1 h-6 w-6 shrink-0 grid place-items-center rounded-lg text-brand-500 hover:bg-brand-100 cursor-pointer"
+            >
+              <X size={13} />
+            </button>
+          </div>
           <p className="text-[11.5px] text-brand-800 mt-0.5">
             In <b>Supabase → SQL Editor</b>, run these from <b>supabase/migrations/</b> in order. Each one is additive
             and safe to re-run; everything keeps working meanwhile.

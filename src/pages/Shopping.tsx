@@ -82,7 +82,7 @@ export default function Shopping() {
     <div className="space-y-5 max-w-[1600px]">
       <PageHeader title="Shopping Assistant" subtitle="Search everything you have bought, plan quantities and see the cost before you go." />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Estimated Total" value={money(estimate)} icon={<ShoppingCart size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">{list.length} items{unpriced ? ` · ${unpriced} without a price` : ''}</span>} />
         <StatCard label="Still To Buy" value={money(pending)} icon={<Plus size={20} />} tint="#f59e0b" footer={<span className="text-slate-400">{rows.filter((r) => !r.x.bought).length} pending</span>} />
         <StatCard label="Picked Up" value={money(estimate - pending)} icon={<Check size={20} />} tint="#10b981" footer={<div><div className="text-[10px] text-slate-400 mb-1">{pct(estimate - pending, estimate || 1)}% of list</div><Progress value={estimate - pending} max={estimate || 1} color="#10b981" height={5} /></div>} />
@@ -96,8 +96,8 @@ export default function Shopping() {
         </div>
       )}
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <div className="xl:col-span-8 space-y-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <div className="lg:col-span-8 space-y-4">
           <Card>
             <CardHead title="Find an item you have bought" sub="Every purchased item is searchable — latest price, date, brand, pack size and supermarket" />
             <div className="px-5 pb-4">
@@ -160,7 +160,7 @@ export default function Shopping() {
           </Card>
         </div>
 
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           <Card>
             <CardHead
               title="Monthly needs"

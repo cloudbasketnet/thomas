@@ -130,7 +130,7 @@ export function VerificationTab() {
         </div>
       )}
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active Questions" value={String(activeCount)} icon={<Shield size={18} />} tint="#3b82f6" footer={<span className="text-slate-400">{verificationQuestions.length} total</span>} />
         <StatCard label="People" value={String(people.length)} icon={<Users size={18} />} tint="#8b5cf6" footer={<span className="text-slate-400">In your People Library</span>} />
         <StatCard label="Random Mode" value={randomMode ? 'ON' : 'Mixed'} icon={<Shuffle size={18} />} tint="#10b981" />

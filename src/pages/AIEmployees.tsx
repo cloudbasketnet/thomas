@@ -154,8 +154,8 @@ export default function AIEmployees() {
           </div>
         </Card>
       ) : (
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-12 items-start">
-          <div className="xl:col-span-4 space-y-3">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+          <div className="lg:col-span-4 space-y-3">
             {employees.map((e) => (
               <div key={e.id} onClick={() => setActiveId(e.id)} className={`card p-3.5 cursor-pointer transition ${activeId === e.id ? 'border-brand-400 ring-2 ring-brand-500/10' : ''}`}>
                 <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ export default function AIEmployees() {
             ))}
           </div>
 
-          <div className="xl:col-span-8">
+          <div className="lg:col-span-8">
             {active ? (
               <div className="card flex flex-col h-[560px]">
                 <div className="px-5 py-3.5 border-b border-[#eef2f8] flex items-center gap-2.5">

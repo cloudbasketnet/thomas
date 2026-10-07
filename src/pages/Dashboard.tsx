@@ -170,26 +170,28 @@ export default function Dashboard() {
       </div>
 
       {/* Daily spending + the account you watch most */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <DailyExpensesCard />
         <FavouriteBankCard />
       </div>
 
       {/* Card balance + everything with a date on it */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <CreditCardCard />
         <DuePaymentsCard />
       </div>
 
       {/* Charts row */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-5">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Income vs Expenses" right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
-          <div className="px-3 pb-4 flex flex-col lg:flex-row gap-3">
+          {/* Side by side only once the card is wide (xl); below that the totals
+              sit under the bars as a row, so the chart keeps the full width. */}
+          <div className="px-3 pb-4 flex flex-col xl:flex-row gap-3">
             <div className="flex-1 min-w-0">
               <IncomeExpenseBars data={series} />
             </div>
-            <div className="lg:w-[140px] shrink-0 space-y-3 px-2 pb-2 self-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3 xl:w-[140px] shrink-0 px-2 pb-2 self-center">
               <div>
                 <p className="text-[11px] text-slate-400">Total Income</p>
                 <p className="text-[15px] font-extrabold text-slate-800">{money(t.income)}</p>
@@ -208,7 +210,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-4">
+        <Card className="lg:col-span-6 xl:col-span-4">
           <CardHead title="Budget Progress" right={<ViewAll to="/budget" />} />
           <div className="px-5 pb-5 space-y-3.5">
             {budgets.length === 0 && (
@@ -235,7 +237,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-3">
+        <Card className="lg:col-span-12 xl:col-span-3">
           <CardHead title="Spending by Person" right={<span className="chip bg-slate-100 text-slate-500">This Month</span>} />
           <div className="px-5 pb-5 flex flex-col sm:flex-row xl:flex-col items-center gap-4">
             <Donut
@@ -253,20 +255,20 @@ export default function Dashboard() {
       </div>
 
       {/* Where the money is going, and where it is heading */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <CashFlowCard />
         <ExpenseCategoriesCard />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <RecentTransactionsCard />
         <ActionCentreCard />
         <InsightCard />
       </div>
 
       {/* Loans + converter + documents */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-5">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-7 xl:col-span-5">
           <CardHead title="Loan Tracker" right={<ViewAll to="/loans" />} />
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full min-w-[520px]">
@@ -310,11 +312,11 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <div className="xl:col-span-3">
+        <div className="lg:col-span-5 xl:col-span-3">
           <CurrencyConverter />
         </div>
 
-        <Card className="xl:col-span-4">
+        <Card className="lg:col-span-12 xl:col-span-4">
           <CardHead title="Important Documents" right={<ViewAll to="/documents" />} />
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full min-w-[420px]">
@@ -364,8 +366,8 @@ export default function Dashboard() {
       </div>
 
       {/* Notes + plan + goals */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-5">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Notes & Follow Up" right={<ViewAll to="/notes" />} />
           <div className="px-5 pb-3 flex items-center gap-1.5 flex-wrap">
             {noteCats.map((c) => {
@@ -417,7 +419,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-4">
+        <Card className="lg:col-span-6 xl:col-span-4">
           <CardHead
             title="💡 This Month Plan (AI Suggestion)"
             right={<ViewAll to="/reports" />}
@@ -451,7 +453,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <SavingsGoalCard className="xl:col-span-3" />
+        <SavingsGoalCard className="lg:col-span-12 xl:col-span-3" />
       </div>
 
       {/* Reports strip */}
@@ -461,7 +463,7 @@ export default function Dashboard() {
           sub="Get detailed insights into your finances with comprehensive reports and analytics."
           right={<ViewAll to="/reports" />}
         />
-        <div className="px-5 pb-5 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="px-5 pb-5 grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {[
             { icon: <BarChart3 size={18} />, title: 'Monthly Summary', desc: 'Income, expenses, savings and net balance overview.', color: '#10b981' },
             { icon: <PieIcon size={18} />, title: 'Category Report', desc: 'Detailed spending by category with trends and insights.', color: '#8b5cf6' },

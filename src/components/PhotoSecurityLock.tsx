@@ -182,7 +182,7 @@ export function PhotoSecurityLock() {
   }
 
   return (
-    <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 items-start">
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
       {/* ================= 1. set up ================= */}
       <Card>
         <CardHead

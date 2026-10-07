@@ -129,7 +129,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={isIncome ? 'Total Income (All Time)' : 'Total Expenses (All Time)'}
           value={money(allTime)}
@@ -179,15 +179,15 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       {tab === 'overview' && (
         <>
-          <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-            <Card className="xl:col-span-5">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+            <Card className="lg:col-span-6 xl:col-span-5">
               <CardHead title={isIncome ? 'Monthly Income Trend' : 'Monthly Expense Trend'} right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
               <div className="px-3 pb-4">
                 <SingleBars data={series} color="#3b82f6" highlight={monthLabel(CURRENT_MONTH)} />
               </div>
             </Card>
 
-            <Card className="xl:col-span-4">
+            <Card className="lg:col-span-6 xl:col-span-4">
               <CardHead title={isIncome ? 'Income by Category' : 'Expenses by Category'} />
               <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-4">
                 <Donut data={cats} size={165} centerValue={money(current)} centerLabel="This Month" />
@@ -197,7 +197,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
               </div>
             </Card>
 
-            <Card className="xl:col-span-3">
+            <Card className="lg:col-span-12 xl:col-span-3">
               <CardHead title={isIncome ? 'Income by Account' : 'Expenses by Payment Method'} />
               <div className="px-5 pb-5 space-y-3.5">
                 {(isIncome ? accs : methods).slice(0, 6).map((a, i) => (
@@ -213,8 +213,8 @@ export function LedgerPage({ type }: { type: TxnType }) {
             </Card>
           </div>
 
-          <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-            <Card className="xl:col-span-8">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+            <Card className="lg:col-span-8">
               <CardHead
                 title={isIncome ? 'Recent Income Transactions' : 'Expenses by Receipt'}
                 right={
@@ -292,7 +292,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
               </div>
             </Card>
 
-            <div className="xl:col-span-4 space-y-4">
+            <div className="lg:col-span-4 space-y-4">
               <Card>
                 <CardHead
                   title={isIncome ? 'Income Targets' : 'Budget Status'}

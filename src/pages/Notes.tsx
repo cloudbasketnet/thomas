@@ -8,10 +8,20 @@ import { PayModal, ScheduleEditor, ScheduleView } from '@/components/PaymentSche
 import { scheduleSummary } from '@/lib/schedules'
 import type { Currency, Installment, Note } from '@/types'
 
-const CATEGORIES: Note['category'][] = ['Personal', 'Work', 'Family', 'Car', 'Loan']
+const CATEGORIES: Note['category'][] = ['Personal', 'Work', 'Family', 'Car']
+
+/**
+ * Borrowing belongs on Loans & EMIs, which owns the balances, the amortization
+ * and the payment history. A note in this category is still kept and still
+ * synced — this page simply does not list it, count it, or offer the category
+ * when writing a new note.
+ */
+const HIDDEN_CATEGORIES: Note['category'][] = ['Loan']
+const isFollowUp = (n: Note) => !HIDDEN_CATEGORIES.includes(n.category)
 
 export default function Notes() {
-  const { notes, people, transactions, addNote, updateNote, removeNote, toggleNote, payInstallment } = useStore()
+  const { notes: allNotes, people, transactions, addNote, updateNote, removeNote, toggleNote, payInstallment } = useStore()
+  const notes = useMemo(() => allNotes.filter(isFollowUp), [allNotes])
   const txnIds = useMemo(() => new Set(transactions.map((t) => t.id)), [transactions])
   const [editing, setEditing] = useState<Note | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
@@ -64,7 +74,7 @@ export default function Notes() {
         actions={<button className="btn-primary" onClick={openNew}><Plus size={15} /> Add Note</button>}
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Notes" value={String(notes.length)} icon={<StickyNote size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">All follow-ups</span>} />
         <StatCard label="Pending" value={String(pending)} icon={<ListTodo size={20} />} tint="#f59e0b" footer={<span className="text-slate-400">Still open</span>} />
         <StatCard label="Completed" value={String(done)} icon={<CheckCircle2 size={20} />} tint="#10b981"
@@ -175,7 +185,7 @@ export default function Notes() {
         </div>
       </Card>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {CATEGORIES.map((c) => {
           const items = notes.filter((n) => n.category === c)
           const doneCount = items.filter((n) => n.done).length

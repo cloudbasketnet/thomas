@@ -110,7 +110,7 @@ export default function PriceTracker() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Items Tracked" value={String(items.length)} icon={<Tags size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">From your purchases</span>} />
         <StatCard label="Price Increases" value={String(up.length)} icon={<TrendingUp size={20} />} tint="#ef4444" footer={<span className="text-slate-400">{periodLabel}</span>} />
         <StatCard label="Price Decreases" value={String(down.length)} icon={<TrendingDown size={20} />} tint="#10b981" footer={<span className="text-slate-400">{periodLabel}</span>} />

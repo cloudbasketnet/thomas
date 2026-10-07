@@ -73,7 +73,7 @@ export default function Reports() {
 
       {tab === 'summary' && (
         <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label={`Income (${monthLabel(CURRENT_MONTH)})`} value={money(t.income)} icon={<BarChart3 size={20} />} tint="#22c55e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'income' && x.date.startsWith(CURRENT_MONTH)).length} entries</span>} />
             <StatCard label={`Expenses (${monthLabel(CURRENT_MONTH)})`} value={money(t.expenses)} icon={<BarChart3 size={20} />} tint="#f43f5e" footer={<span className="text-slate-400">{transactions.filter((x) => x.type === 'expense' && x.date.startsWith(CURRENT_MONTH)).length} entries</span>} />
             <StatCard label="Net Balance" value={money(t.net)} icon={<BarChart3 size={20} />} tint={t.net >= 0 ? '#3b82f6' : '#ef4444'} footer={<span className={t.net >= 0 ? 'text-emerald-600 font-semibold' : 'text-rose-600 font-semibold'}>{t.net >= 0 ? 'Surplus' : 'Deficit'} this month</span>} />
@@ -85,7 +85,7 @@ export default function Reports() {
             <div className="px-3 pb-4"><TrendLine data={series} height={300} /></div>
           </Card>
 
-          <div className="grid gap-4 grid-cols-1 xl:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHead title="Month-by-Month Breakdown" />
               <div className="overflow-x-auto scroll-thin">
@@ -151,22 +151,22 @@ export default function Reports() {
       )}
 
       {tab === 'category' && (
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-          <Card className="xl:col-span-4">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+          <Card className="lg:col-span-6 xl:col-span-4">
             <CardHead title="Expenses by Category" />
             <div className="px-5 pb-5 flex flex-col items-center gap-4">
               <Donut data={expCats} size={180} centerValue={money(t.expenses)} centerLabel="Spent" />
               <div className="w-full"><DonutLegend data={expCats} total={t.expenses} /></div>
             </div>
           </Card>
-          <Card className="xl:col-span-4">
+          <Card className="lg:col-span-6 xl:col-span-4">
             <CardHead title="Income by Source" />
             <div className="px-5 pb-5 flex flex-col items-center gap-4">
               <Donut data={incCats} size={180} centerValue={money(t.income)} centerLabel="Earned" />
               <div className="w-full"><DonutLegend data={incCats} total={t.income} /></div>
             </div>
           </Card>
-          <Card className="xl:col-span-4">
+          <Card className="lg:col-span-12 xl:col-span-4">
             <CardHead title="Spending by Person" />
             <div className="px-5 pb-5 flex flex-col items-center gap-4">
               <Donut data={persons} size={180} centerValue={money(t.expenses)} centerLabel="Total" />
@@ -174,7 +174,7 @@ export default function Reports() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-12">
+          <Card className="lg:col-span-12">
             <CardHead title="Budget vs Actual by Category" />
             <div className="overflow-x-auto scroll-thin">
               <table className="w-full min-w-[640px]">
@@ -218,7 +218,7 @@ export default function Reports() {
 
       {tab === 'loans' && (
         <>
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Total Outstanding" value={money(ls.outstanding)} icon={<Landmark size={20} />} tint="#ef4444" footer={<span className="text-slate-400">{ls.active.length} active loans</span>} />
             <StatCard label="Monthly EMI" value={money(ls.monthlyEmi)} icon={<Landmark size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">Total commitment</span>} />
             <StatCard label="Due This Month" value={money(ls.dueAmount)} icon={<Landmark size={20} />} tint="#f59e0b" footer={<span className="text-slate-400">{ls.dueThisMonth.length} payments</span>} />
@@ -306,8 +306,8 @@ export default function Reports() {
       )}
 
       {tab === 'notes' && (
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-          <Card className="xl:col-span-8">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+          <Card className="lg:col-span-8">
             <CardHead title="Notes & Follow-up Report" />
             <div className="overflow-x-auto scroll-thin">
               <table className="w-full min-w-[560px]">
@@ -340,7 +340,7 @@ export default function Reports() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-4">
+          <Card className="lg:col-span-4">
             <CardHead title="By Category" />
             <div className="px-5 pb-5 space-y-4">
               {['Personal', 'Work', 'Family', 'Car', 'Loan'].map((c, i) => {
@@ -430,7 +430,7 @@ function TagsReport() {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={`Top tag (${range.label})`} value={top ? top.tag : '—'} icon={<Tag size={20} />} tint="#8b5cf6"
           footer={<span className="text-slate-400">{top ? `${money(top.total)} · ${top.count} expense${top.count === 1 ? '' : 's'}` : 'No tagged spending'}</span>} />
         <StatCard label="Tagged spending" value={money(tagged)} icon={<Tag size={20} />} tint="#f43f5e"
@@ -441,8 +441,8 @@ function TagsReport() {
           footer={<span className="text-slate-400">{tags.length - used.length} with no spending</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-4">
           <CardHead title="Spending by Tag" sub={range.label} />
           <div className="px-5 pb-5 flex flex-col items-center gap-4">
             {used.length ? (
@@ -456,7 +456,7 @@ function TagsReport() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-8">
+        <Card className="lg:col-span-8">
           <CardHead
             title="Tag Ranking"
             sub="Highest spending first"

@@ -183,8 +183,8 @@ export default function AIAdvisor() {
         </div>
       )}
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12 items-start">
-        <div className="xl:col-span-8 space-y-4">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+        <div className="lg:col-span-8 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             {(['achachan', 'chachan'] as const).map((key) => {
               const p = personaMeta(key)
@@ -294,7 +294,7 @@ export default function AIAdvisor() {
           </div>
         </div>
 
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           <div className="card p-5">
             <div className="flex items-center gap-2.5 mb-4">
               <span className="h-9 w-9 rounded-full bg-gradient-to-br from-brand-500 to-cyan-400 grid place-items-center text-white shrink-0">

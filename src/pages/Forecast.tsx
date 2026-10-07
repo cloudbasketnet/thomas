@@ -136,7 +136,7 @@ export default function Forecast() {
             {pos.covered ? 'Covered this month' : `${show(pos.extraNeeded)} short`}
           </span>
         </div>
-        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <HeroFigure icon={<Wallet size={20} />} label="Current balance" value={show(pos.balance)} />
           <HeroFigure icon={<CalendarDays size={20} />} label="Remaining payments" value={show(pos.remaining)} />
           <HeroFigure
@@ -148,7 +148,7 @@ export default function Forecast() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
         {/* ---- what is still to pay ---- */}
         <Card>
           <CardHead
@@ -315,15 +315,15 @@ export default function Forecast() {
       </Card>
 
       {/* ---------------- trend + what it implies ---------------- */}
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12 items-start">
-        <Card className="xl:col-span-7">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+        <Card className="lg:col-span-7">
           <CardHead title="Income against what each month needs" sub="Planned income, total required, and the surplus between them" />
           <div className="px-3 pb-4">
             <TrendLine data={chartData} height={260} />
           </div>
         </Card>
 
-        <Card className="xl:col-span-5">
+        <Card className="lg:col-span-5">
           <CardHead
             title="Financial Suggestions"
             sub="Based on your actual records only — never a generic tip."

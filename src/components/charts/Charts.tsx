@@ -145,7 +145,10 @@ export function Donut({
   return (
     // shrink-0: as a flex child the donut was being squeezed narrower than its
     // declared size, which squashed the ring and pushed the centre label out.
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
+    // max-width + aspect-ratio instead of a fixed height: on a column narrower
+    // than `size` (a small phone, or a three-across tablet row) it scales down
+    // and stays circular rather than spilling out of the card.
+    <div className="relative shrink-0 max-w-full" style={{ width: size, aspectRatio: '1 / 1' }}>
       {empty && (
         <div
           className="absolute inset-0 rounded-full border-[14px] border-slate-100"

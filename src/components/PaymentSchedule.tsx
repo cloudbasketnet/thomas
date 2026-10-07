@@ -147,7 +147,9 @@ export function ScheduleView({ note, onPay }: { note: Note; onPay: (i: Installme
           <div key={k} className="rounded-lg bg-white px-3 py-2"><p className="text-[10.5px] text-slate-400">{k}</p><p className="text-[13px] font-extrabold text-slate-800">{v}</p></div>
         ))}
       </div>
-      <table className="w-full text-[12.5px]">
+      {/* The five columns do not fit a phone; let them scroll rather than crush. */}
+      <div className="overflow-x-auto scroll-thin -mx-1 px-1">
+        <table className="w-full min-w-[460px] text-[12.5px]">
         <thead><tr className="text-[10.5px] uppercase tracking-wide text-slate-400 text-left"><th className="py-1 font-semibold">Payment</th><th className="py-1 font-semibold">Due</th><th className="py-1 font-semibold text-right">Amount</th><th className="py-1 pl-4 font-semibold">Status</th><th /></tr></thead>
         <tbody>
           {sum.list.map((i) => {
@@ -172,7 +174,8 @@ export function ScheduleView({ note, onPay }: { note: Note; onPay: (i: Installme
             )
           })}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   )
 }

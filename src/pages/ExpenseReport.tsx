@@ -125,7 +125,7 @@ export default function ExpenseReport() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={`Spent in ${monthLabel(month)}`}
           value={money(sum.total)}
@@ -187,15 +187,15 @@ export default function ExpenseReport() {
       {tab === 'explorer' && <ExpenseExplorer />}
 
       {tab === 'overview' && (
-        <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-          <Card className="xl:col-span-5">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+          <Card className="lg:col-span-6 xl:col-span-5">
             <CardHead title="Monthly Spend" right={<span className="chip bg-slate-100 text-slate-500">9 months</span>} />
             <div className="px-3 pb-4">
               <SingleBars data={series} color="#f43f5e" highlight={monthLabel(month)} />
             </div>
           </Card>
 
-          <Card className="xl:col-span-4">
+          <Card className="lg:col-span-6 xl:col-span-4">
             <CardHead title="By Category" sub={currentMonthLabel(month)} />
             <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-4">
               <Donut data={cats} size={165} centerValue={money(sum.total)} centerLabel="Total" />
@@ -205,7 +205,7 @@ export default function ExpenseReport() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-3">
+          <Card className="lg:col-span-12 xl:col-span-3">
             <CardHead title="By Person" sub={currentMonthLabel(month)} />
             <div className="px-5 pb-5 space-y-3.5">
               {persons.map((p, i) => (
@@ -221,7 +221,7 @@ export default function ExpenseReport() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-6">
+          <Card className="lg:col-span-6">
             <CardHead title="Payment Methods" sub={currentMonthLabel(month)} />
             <div className="px-5 pb-5 space-y-3.5">
               {methods.map((m, i) => (
@@ -238,7 +238,7 @@ export default function ExpenseReport() {
             </div>
           </Card>
 
-          <Card className="xl:col-span-6">
+          <Card className="lg:col-span-6">
             <CardHead title="Biggest Single Expense" sub={currentMonthLabel(month)} />
             <div className="px-5 pb-5">
               {sum.largest ? (

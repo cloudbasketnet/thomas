@@ -179,7 +179,7 @@ export default function ProfitLoss() {
       />
 
       <Card>
-        <div className="p-4 grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-8 items-end">
+        <div className="p-4 grid gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 items-end">
           <label className="block"><span className="label">Period</span>
             <select className="input h-9" value={mode} onChange={(e) => setMode(e.target.value as Mode)}>
               <option value="month">Month</option><option value="year">Year</option><option value="custom">Custom range</option>
@@ -228,12 +228,12 @@ export default function ProfitLoss() {
         <StatCard label={cur.net >= 0 ? 'Net Surplus' : 'Net Deficit'} value={money(cur.net)} icon={<Scale size={20} />} tint={cur.net >= 0 ? '#3b82f6' : '#ef4444'} footer={<Delta c={net} goodWhenUp />} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-7">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-7">
           <CardHead title="Monthly trend" sub="Last 12 months, same filters" />
           <div className="px-3 pb-4"><IncomeExpenseBars data={trend} height={250} /></div>
         </Card>
-        <Card className="xl:col-span-5">
+        <Card className="lg:col-span-5">
           <CardHead title="Outside the P&L" sub="Cash that moved without being income or expense" />
           <div className="px-5 pb-5 space-y-2.5 text-[12.5px]">
             {[

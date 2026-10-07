@@ -143,7 +143,7 @@ export default function Accounts() {
 
       <BalanceCheck />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label="Bank Accounts" value={money(totals.bank)} icon={<Landmark size={20} />} tint="#3b82f6"
           footer={<span className="text-slate-400">{accounts.filter((a) => a.type === 'bank').length} accounts</span>} />
         <StatCard label="Cash Wallets" value={money(totals.cash)} icon={<Wallet size={20} />} tint="#10b981"
@@ -156,8 +156,8 @@ export default function Accounts() {
           footer={<span className="text-slate-400">Bank + cash, less cards and loans</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-8">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-8">
           <div className="px-5 pt-4 flex gap-1 flex-wrap border-b border-[#f1f5f9]">
             {tabs.map((t) => (
               <button
@@ -376,7 +376,7 @@ export default function Accounts() {
           </div>
         </Card>
 
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           <Card>
             <CardHead title="Account Balance Overview" />
             <div className="px-5 pb-5 flex flex-col sm:flex-row items-center gap-4">
@@ -458,7 +458,7 @@ export default function Accounts() {
         </div>
       </Card>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { icon: '📄', title: 'Account Statements', desc: 'Download your accounts and this month’s transactions as CSV.', btn: 'Download Statements', color: '#10b981', onClick: downloadStatement },
           { icon: '🔄', title: 'Update Balances', desc: 'Match balances to your bank statements — the opening balance adjusts, transactions stay untouched.', btn: editBalances ? 'Done' : 'Reconcile Balances', color: '#3b82f6', onClick: () => setEditBalances((v) => !v) },

@@ -97,7 +97,7 @@ export function ExpenseExplorer() {
           sub="Combine any of these — totals, groups and printouts all follow them"
           right={<button className="btn-ghost h-9" onClick={reset}><RotateCcw size={14} /> Reset</button>}
         />
-        <div className="px-5 pb-5 grid gap-3 grid-cols-2 md:grid-cols-4 xl:grid-cols-6">
+        <div className="px-5 pb-5 grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           <label className="block"><span className="label">From</span><input type="date" className="input h-9" value={f.from ?? ''} onChange={(e) => set({ from: e.target.value || undefined })} /></label>
           <label className="block"><span className="label">To</span><input type="date" className="input h-9" value={f.to ?? ''} onChange={(e) => set({ to: e.target.value || undefined })} /></label>
           <label className="block col-span-2"><span className="label">Item name contains</span><input className="input h-9" value={f.item ?? ''} onChange={(e) => set({ item: e.target.value || undefined })} placeholder="e.g. chapathi" /></label>
@@ -167,8 +167,9 @@ export function ExpenseExplorer() {
           <div className="overflow-x-auto scroll-thin">
             {groups.map((g) => (
               <div key={g.key}>
+                {/* min-w matches the table below, so the group heading stays aligned while scrolled sideways. */}
                 {groupBy !== 'none' && (
-                  <div className="px-5 py-2 bg-slate-50 border-y border-[#eef2f8] flex justify-between text-[12.5px] font-bold text-slate-700">
+                  <div className="px-5 py-2 min-w-[900px] bg-slate-50 border-y border-[#eef2f8] flex justify-between text-[12.5px] font-bold text-slate-700">
                     <span>{g.key}</span><span>{g.count} item{g.count === 1 ? '' : 's'} · {money(g.total, undefined, 2)}</span>
                   </div>
                 )}

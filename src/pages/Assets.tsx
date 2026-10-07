@@ -85,7 +85,7 @@ export default function Assets() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Owned Value (my share)" value={money(ownedBase)} icon={<Landmark size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">Before related debt</span>} />
         <StatCard label="Full Value of Assets" value={money(grossBase)} icon={<Coins size={20} />} tint="#8b5cf6" footer={<span className="text-slate-400">{assets.length} asset{assets.length === 1 ? '' : 's'}</span>} />
         <StatCard label="Linked Loans" value={money(debtBase)} icon={<TrendingDown size={20} />} tint="#ef4444" footer={<span className="text-slate-400">Subtracted once, in net worth</span>} />
@@ -116,7 +116,7 @@ export default function Assets() {
       {list.length === 0 ? (
         <Card><Empty text="No assets yet — add a property, gold, a car or an investment." /></Card>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {list.map((a) => {
             const share = ownedShare(a)
             const loan = linkedDebt(a, loans)
@@ -416,7 +416,8 @@ function HistoryModal({ asset, onClose, history, onRemove }: { asset: Asset | nu
     <Modal open onClose={onClose} title={`Valuation history — ${asset.name}`} subtitle="Every estimate, newest first" width="max-w-2xl"
       footer={<button className="btn-primary" onClick={onClose}>Close</button>}>
       {steps.length === 0 ? <Empty text="No valuations recorded yet." /> : (
-        <table className="w-full text-[12.5px]">
+        <div className="overflow-x-auto scroll-thin">
+        <table className="w-full min-w-[520px] text-[12.5px]">
           <thead><tr className="text-[10.5px] uppercase tracking-wide text-slate-400 text-left"><th className="py-1.5 font-semibold">Date</th><th className="py-1.5 font-semibold text-right">Full value</th><th className="py-1.5 font-semibold text-right">My {asset.ownershipPct}%</th><th className="py-1.5 font-semibold text-right">Change</th><th className="py-1.5 font-semibold">Source</th><th /></tr></thead>
           <tbody>
             {steps.map(({ v, delta, pct }) => (
@@ -431,6 +432,7 @@ function HistoryModal({ asset, onClose, history, onRemove }: { asset: Asset | nu
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </Modal>
   )

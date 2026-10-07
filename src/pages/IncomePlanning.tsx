@@ -68,7 +68,7 @@ export default function IncomePlanning() {
         actions={<button className="btn-primary" onClick={openAdd}><Plus size={15} /> Add Income Source</button>}
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="This Month Expected" value={show(preview[0]?.amount ?? 0)} icon={<Banknote size={20} />} tint={catColor} />
         <StatCard label="Next Month Expected" value={show(preview[1]?.amount ?? 0)} icon={<CalendarClock size={20} />} tint={catColor} />
         <StatCard label="Active Sources" value={String(active.length)} icon={<TrendingUp size={20} />} tint="#8b5cf6" footer={<span className="text-slate-400">{incomeSources.length} total</span>} />

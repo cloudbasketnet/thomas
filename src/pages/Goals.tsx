@@ -37,7 +37,7 @@ export default function Goals() {
         actions={<button className="btn-primary" onClick={() => setModal(true)}><Plus size={15} /> Add New Goal</button>}
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Target" value={money(totalTarget)} icon={<Target size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">{goals.length} active goals</span>} />
         <StatCard label="Total Saved" value={money(totalSaved)} icon={<PiggyBank size={20} />} tint="#10b981"
           footer={<div><div className="text-[10px] text-slate-400 mb-1">{pct(totalSaved, totalTarget)}% of all targets</div><Progress value={totalSaved} max={totalTarget || 1} color="#10b981" height={5} /></div>} />
@@ -45,7 +45,7 @@ export default function Goals() {
         <StatCard label="Goals Reached" value={String(completed)} icon={<Flag size={20} />} tint="#8b5cf6" footer={<span className="text-slate-400">of {goals.length} goals</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {goals.map((g) => {
           const p = pct(g.saved, g.target)
           const dl = daysLeft(g.deadline)
@@ -96,7 +96,7 @@ export default function Goals() {
           )
         })}
         {goals.length === 0 && (
-          <Card className="sm:col-span-2 xl:col-span-3"><Empty text="No goals yet — create your first savings goal." /></Card>
+          <Card className="sm:col-span-2 lg:col-span-3"><Empty text="No goals yet — create your first savings goal." /></Card>
         )}
       </div>
 

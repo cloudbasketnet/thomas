@@ -157,7 +157,7 @@ function CategoryBudgets() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Budget" value={money(totalBudget)} icon={<Wallet size={20} />} tint="#10b981" footer={<span className="text-slate-400">This Month</span>} />
         <StatCard label="Total Spent" value={money(totalSpent)} icon={<Gauge size={20} />} tint="#3b82f6"
           footer={<div><div className="text-[10px] text-slate-400 mb-1">{pct(totalSpent, totalBudget)}% of budget</div><Progress value={totalSpent} max={totalBudget} color="#3b82f6" height={5} /></div>} />
@@ -218,8 +218,8 @@ function CategoryBudgets() {
         </Card>
       )}
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-5">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-7 xl:col-span-5">
           <CardHead title="Budget vs Actual" />
           <div className="px-3 pb-4">
             <ResponsiveContainer width="100%" height={250}>
@@ -236,7 +236,7 @@ function CategoryBudgets() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-3">
+        <Card className="lg:col-span-5 xl:col-span-3">
           <CardHead title="Spending Overview" />
           <div className="px-5 pb-5 flex flex-col items-center gap-4">
             <Donut data={donut} colors={colors} size={175} centerValue={money(totalSpent)} centerLabel="Total Spent" />
@@ -246,7 +246,7 @@ function CategoryBudgets() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-4">
+        <Card className="lg:col-span-12 xl:col-span-4">
           <CardHead title="Budget Progress" right={<span className="chip bg-slate-100 text-slate-500">{currentMonthLabel()}</span>} />
           <div className="px-5 pb-5 space-y-3.5">
             {budgets.map((b) => (
@@ -266,8 +266,8 @@ function CategoryBudgets() {
         </Card>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-8">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-8">
           <CardHead title="Budget Categories" sub="Budget is editable; spent is calculated from this month's expenses" />
           <div className="overflow-x-auto scroll-thin">
             <table className="w-full min-w-[640px]">
@@ -334,7 +334,7 @@ function CategoryBudgets() {
           </div>
         </Card>
 
-        <div className="xl:col-span-4 space-y-4">
+        <div className="lg:col-span-4 space-y-4">
           <Card>
             <CardHead title="Monthly Budget" sub="Changes save as you type" />
             <div className="px-5 pb-5 space-y-3">
@@ -396,8 +396,8 @@ function CategoryBudgets() {
         <div className="space-y-5">
           <div>
             <p className="text-[12.5px] font-bold text-slate-800 mb-3">Budget Details</p>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Budget Name *" className="col-span-3 sm:col-span-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Field label="Budget Name *">
                 <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Monthly Groceries" autoFocus />
               </Field>
               <Field label="Monthly Budget *">

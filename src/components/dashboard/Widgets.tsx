@@ -76,7 +76,7 @@ export function SafeToSpendBar() {
           </p>
           <p className="text-[11px] text-slate-400">Keep your accounts up to date.</p>
         </div>
-        <Link to="/installments" className="btn-primary h-9">
+        <Link to="/loans" className="btn-primary h-9">
           Review <ArrowRight size={14} />
         </Link>
       </div>
@@ -99,7 +99,7 @@ export function DailyExpensesCard() {
   const average = data.length ? Math.round(data.reduce((n, d) => n + d.value, 0) / data.length) : 0
 
   return (
-    <Card className="xl:col-span-7">
+    <Card className="lg:col-span-7">
       <CardHead
         title="Daily Expenses"
         sub={`Daily spending · average ${money(average)} a day`}
@@ -148,7 +148,7 @@ export function FavouriteBankCard() {
 
   if (!chosen) {
     return (
-      <Card className="xl:col-span-5">
+      <Card className="lg:col-span-5">
         <CardHead title="Favourite Bank" sub="Pin one account to watch here" />
         <div className="px-5 pb-8 pt-2 text-center">
           <Landmark size={26} className="mx-auto text-slate-300" />
@@ -174,7 +174,7 @@ export function FavouriteBankCard() {
   }
 
   return (
-    <Card className="xl:col-span-5">
+    <Card className="lg:col-span-5">
       <CardHead
         title="Favourite Bank"
         sub={chosen.details || chosen.bank || 'Main account'}
@@ -259,7 +259,7 @@ export function CreditCardCard() {
 
   if (!chosen) {
     return (
-      <Card className="xl:col-span-5">
+      <Card className="lg:col-span-5">
         <CardHead title="Credit Card Balance" />
         <div className="px-5 pb-8 pt-2 text-center">
           <CreditCard size={26} className="mx-auto text-slate-300" />
@@ -276,7 +276,7 @@ export function CreditCardCard() {
   const max = fig.limit && fig.limit > 0 ? fig.limit : niceMax(Math.max(fig.owed, 1))
 
   return (
-    <Card className="xl:col-span-5">
+    <Card className="lg:col-span-5">
       <CardHead
         title="Credit Card Balance"
         sub={chosen.details || chosen.name}
@@ -368,8 +368,8 @@ export function DuePaymentsCard() {
   )
 
   return (
-    <Card className="xl:col-span-7">
-      <CardHead title="Instalments & Due Dates" sub="Everything still to pay in the next 60 days" right={<ViewAll to="/installments" />} />
+    <Card className="lg:col-span-7">
+      <CardHead title="Instalments & Due Dates" sub="Everything still to pay in the next 60 days" right={<ViewAll to="/loans" />} />
       <div className="overflow-x-auto scroll-thin">
         <table className="w-full min-w-[560px]">
           <thead className="bg-slate-50/70">
@@ -411,7 +411,7 @@ export function DuePaymentsCard() {
                 </td>
                 <td className="td text-right">
                   <Link
-                    to={r.kind === 'loan' ? '/loans' : r.kind === 'bill' ? '/bills' : '/installments'}
+                    to={r.kind === 'loan' ? '/loans' : r.kind === 'bill' ? '/bills' : '/loans'}
                     className="btn-soft h-8 px-3 text-[11.5px]"
                   >
                     {r.days <= 0 ? 'Pay now' : 'Open'}
@@ -436,7 +436,7 @@ export function ExpenseCategoriesCard() {
   const total = rows.reduce((n, r) => n + r.value, 0)
 
   return (
-    <Card className="xl:col-span-4">
+    <Card className="lg:col-span-4">
       <CardHead title="Expense Categories" right={<span className="chip bg-slate-100 text-slate-500">This month</span>} />
       <div className="space-y-3 px-5 pb-5">
         {rows.length === 0 && <p className="py-8 text-center text-[12.5px] text-slate-400">Nothing spent yet this month.</p>}
@@ -469,7 +469,7 @@ export function CashFlowCard() {
   )
 
   return (
-    <Card className="xl:col-span-8">
+    <Card className="lg:col-span-8">
       <CardHead
         title="30-Day Cash Flow Forecast"
         sub="The last week as recorded, then a projection from your commitments and recent spending"
@@ -496,7 +496,7 @@ export function CashFlowCard() {
 // Savings goal
 // ---------------------------------------------------------------------------
 
-export function SavingsGoalCard({ className = 'xl:col-span-4' }: { className?: string }) {
+export function SavingsGoalCard({ className = 'lg:col-span-6 xl:col-span-4' }: { className?: string }) {
   const goals = useStore((s) => s.goals)
   const top = [...goals].sort((a, b) => b.saved / Math.max(1, b.target) - a.saved / Math.max(1, a.target))[0]
 
@@ -556,7 +556,7 @@ export function RecentTransactionsCard() {
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '—'
 
   return (
-    <Card className="xl:col-span-5">
+    <Card className="lg:col-span-6 xl:col-span-5">
       <CardHead title="Recent Transactions" right={<ViewAll to="/expenses" />} />
       <div className="overflow-x-auto scroll-thin">
         <table className="w-full min-w-[460px]">
@@ -621,7 +621,7 @@ export function ActionCentreCard() {
   const items = useMemo(() => actionCentre(bills, documents, notes, (id) => ids.has(id)), [bills, documents, notes, ids])
 
   return (
-    <Card className="xl:col-span-3">
+    <Card className="lg:col-span-6 xl:col-span-3">
       <CardHead title="Action Centre" right={<Bell size={16} className="text-slate-400" />} />
       <div className="space-y-2 px-5 pb-5">
         {items.length === 0 && (
@@ -663,7 +663,7 @@ export function InsightCard() {
   const top = warnings[0]
 
   return (
-    <Card className="xl:col-span-4">
+    <Card className="lg:col-span-12 xl:col-span-4">
       <CardHead title="Insight" right={<Sparkles size={16} className="text-brand-500" />} />
       <div className="space-y-2.5 px-5 pb-5">
         {!top ? (

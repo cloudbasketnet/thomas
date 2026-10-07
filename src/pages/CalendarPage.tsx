@@ -72,8 +72,8 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-12">
-        <Card className="xl:col-span-8">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <Card className="lg:col-span-8">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <h3 className="card-title">{MONTH_NAMES[cursor.month]} {cursor.year}</h3>
             <div className="flex items-center gap-1">
@@ -89,13 +89,17 @@ export default function CalendarPage() {
             </div>
           </div>
 
-          <div className="px-4 pb-5">
-            <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+          <div className="px-2 sm:px-4 pb-5">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-1.5">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                <div key={d} className="text-center text-[11px] font-bold text-slate-400 py-1">{d}</div>
+                <div key={d} className="text-center text-[11px] font-bold text-slate-400 py-1">
+                  {/* A 7-column month grid leaves ~44px a cell on a phone — one letter is all that fits. */}
+                  <span className="sm:hidden">{d.charAt(0)}</span>
+                  <span className="hidden sm:inline">{d}</span>
+                </div>
               ))}
             </div>
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
               {Array.from({ length: startDay }).map((_, i) => <div key={`e${i}`} />)}
               {Array.from({ length: daysInMonth }).map((_, i) => {
                 const day = i + 1
@@ -105,12 +109,25 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={day}
-                    className={`min-h-[86px] rounded-xl border p-1.5 transition ${
+                    className={`min-h-[58px] sm:min-h-[86px] rounded-lg sm:rounded-xl border p-1 sm:p-1.5 transition ${
                       isToday ? 'border-brand-400 bg-brand-50/40 ring-2 ring-brand-500/10' : 'border-[#eef2f8] hover:border-slate-200'
                     }`}
                   >
                     <p className={`text-[11px] font-bold mb-1 ${isToday ? 'text-brand-700' : 'text-slate-500'}`}>{day}</p>
-                    <div className="space-y-1">
+
+                    {/* Phone: a dot per event — a 41px-wide label would show two letters and read as noise. */}
+                    <div className="sm:hidden flex flex-wrap gap-0.5">
+                      {dayEvents.slice(0, 6).map((e, idx) => (
+                        <span
+                          key={idx}
+                          title={`${e.label}${e.amount ? ` — ${money(e.amount, (e.currency as any) ?? 'AED')}` : ''}`}
+                          className="h-1.5 w-1.5 rounded-full"
+                          style={{ background: TYPE_STYLE[e.type].dot }}
+                        />
+                      ))}
+                    </div>
+
+                    <div className="hidden sm:block space-y-1">
                       {dayEvents.slice(0, 3).map((e, idx) => (
                         <div
                           key={idx}
@@ -131,7 +148,7 @@ export default function CalendarPage() {
           </div>
         </Card>
 
-        <Card className="xl:col-span-4">
+        <Card className="lg:col-span-4">
           <CardHead title={`${MONTH_NAMES[cursor.month]} Events`} sub={`${monthEvents.length} items this month`} />
           <div className="px-5 pb-5 space-y-2 max-h-[620px] overflow-y-auto scroll-thin">
             {[...monthEvents].sort((a, b) => a.date.localeCompare(b.date)).map((e, i) => (

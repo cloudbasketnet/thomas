@@ -187,7 +187,7 @@ export default function People() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Household Income" value={money(report.household.income)} icon={<ArrowDownLeft size={20} />} tint="#10b981" footer={<span className="text-slate-400">Earned — excludes transfers and borrowing</span>} />
         <StatCard label="Household Expenses" value={money(report.household.expenses)} icon={<ArrowUpRight size={20} />} tint="#f43f5e" footer={<span className="text-slate-400">Each record counted once</span>} />
         <StatCard label="Net Surplus / Deficit" value={money(report.household.net)} icon={<Users size={20} />} tint={report.household.net >= 0 ? '#3b82f6' : '#ef4444'} footer={<span className="text-slate-400">Income − expenses</span>} />
@@ -195,7 +195,7 @@ export default function People() {
       </div>
 
       {/* ---- compact person cards ------------------------------------------ */}
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {visible.map((p) => {
           const st = statOf(p.name)
           const active = scope === 'individual' && selected === p.name
@@ -236,10 +236,11 @@ export default function People() {
               <p className="text-[12px] text-slate-500">{monthLabel(month)} {month.slice(0, 4)}</p>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-6 text-right">
-            <div><p className="text-[10.5px] text-slate-400 uppercase">{scope === 'individual' ? `${selected ?? ''} earned` : 'Earned'}</p><p className="text-[18px] font-extrabold text-emerald-600 tabular-nums">{money(detail.income)}</p></div>
-            <div><p className="text-[10.5px] text-slate-400 uppercase">Spent</p><p className="text-[18px] font-extrabold text-rose-600 tabular-nums">{money(detail.expenses)}</p></div>
-            <div><p className="text-[10.5px] text-slate-400 uppercase">Net</p><p className={`text-[18px] font-extrabold tabular-nums ${detail.net >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>{money(detail.net)}</p></div>
+          {/* Three money figures across a phone need the tighter gap and type to stay on one line. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-6 text-right">
+            <div><p className="text-[10.5px] text-slate-400 uppercase">{scope === 'individual' ? `${selected ?? ''} earned` : 'Earned'}</p><p className="text-[15px] sm:text-[18px] font-extrabold text-emerald-600 tabular-nums">{money(detail.income)}</p></div>
+            <div><p className="text-[10.5px] text-slate-400 uppercase">Spent</p><p className="text-[15px] sm:text-[18px] font-extrabold text-rose-600 tabular-nums">{money(detail.expenses)}</p></div>
+            <div><p className="text-[10.5px] text-slate-400 uppercase">Net</p><p className={`text-[15px] sm:text-[18px] font-extrabold tabular-nums ${detail.net >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>{money(detail.net)}</p></div>
           </div>
         </div>
 

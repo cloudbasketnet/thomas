@@ -146,7 +146,7 @@ export default function Documents() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Total Documents" value={String(documents.length)} icon={<FileText size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">{documents.filter((d) => d.storagePath).length} with a file attached</span>} />
         <StatCard label="Valid" value={String(counts.valid)} icon={<CheckCircle2 size={20} />} tint="#10b981"
           footer={<div><div className="text-[10px] text-slate-400 mb-1">{Math.round((counts.valid / (documents.length || 1)) * 100)}% in good standing</div><Progress value={counts.valid} max={documents.length || 1} color="#10b981" height={5} /></div>} />

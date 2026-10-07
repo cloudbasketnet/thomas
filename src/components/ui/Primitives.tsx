@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
@@ -23,7 +23,7 @@ export function CardHead({
   right?: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+    <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3.5">
       <div className="min-w-0">
         <h3 className="card-title leading-tight">{title}</h3>
         {sub && <p className="text-[11.5px] text-slate-500 mt-0.5">{sub}</p>}
@@ -98,8 +98,8 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
       <div>
-        <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900">{title}</h1>
-        {subtitle && <p className="text-[12.5px] text-slate-500 mt-1">{subtitle}</p>}
+        <h1 className="text-[clamp(26px,2.6vw,36px)] font-extrabold tracking-[-0.02em] leading-[1.1] text-slate-900">{title}</h1>
+        {subtitle && <p className="text-[13.5px] text-slate-500 mt-1.5">{subtitle}</p>}
       </div>
       {actions && <div className="flex items-center gap-2 flex-wrap">{actions}</div>}
     </div>
@@ -130,18 +130,27 @@ export function StatCard({
   const cardSize = useStore((s) => s.settings.extra?.theme?.cardSize) ?? DEFAULT_THEME.cardSize
   const sz = STAT_CARD_SIZES[cardSize] ?? STAT_CARD_SIZES.Standard
   return (
-    <div className={cx('card flex items-start gap-2.5 hover:-translate-y-0.5 transition-transform duration-200', sz.pad)}>
+    // A row of tiles should read as a row of colours, not a row of white boxes.
+    // The tint is painted as a flat translucent layer over whatever background
+    // .card already has, so it composites correctly over white in light mode
+    // and over the dark surface in dark mode. Done with background-image
+    // rather than color-mix() so there is no fallback that could paint the
+    // tile in full-strength colour on an older browser.
+    <div
+      className={cx('card flex items-start gap-3 hover:-translate-y-0.5 transition-transform duration-200', sz.pad)}
+      style={{ backgroundImage: `linear-gradient(${tint}14, ${tint}14)`, borderColor: `${tint}2b` } as CSSProperties}
+    >
       <div
-        className={cx('shrink-0 rounded-xl grid place-items-center', sz.icon)}
-        style={{ background: `${tint}1a`, color: tint }}
+        className={cx('shrink-0 rounded-2xl grid place-items-center', sz.icon)}
+        style={{ background: `${tint}26`, color: tint }}
       >
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium text-slate-500 truncate" title={label}>
+        <p className="text-[11.5px] font-semibold text-slate-500 truncate" title={label}>
           {label}
         </p>
-        <p className={cx('font-extrabold tracking-tight text-slate-900 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis', sz.value)}>
+        <p className={cx('font-extrabold tracking-tight text-slate-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis', sz.value)}>
           {value}
         </p>
         {footer && <div className="mt-1.5 text-[10.5px] leading-snug">{footer}</div>}

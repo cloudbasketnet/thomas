@@ -115,14 +115,14 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   }, [documents, loans, bills, txns, budgets, cfg, analysis])
 
   return (
-    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-xl border-b border-[#e8edf5] pad-safe-top">
-      <div className="h-16 px-4 lg:px-6 flex items-center gap-3">
-        <button onClick={onMenu} className="lg:hidden h-9 w-9 grid place-items-center rounded-lg hover:bg-slate-100 cursor-pointer">
+    <header className="sticky top-0 z-30 bg-canvas/85 backdrop-blur-xl pad-safe-top">
+      <div className="h-[72px] px-4 lg:px-6 flex items-center gap-2.5">
+        <button onClick={onMenu} className="lg:hidden h-11 w-11 shrink-0 grid place-items-center rounded-full bg-white border border-[#e9eef8] hover:bg-slate-50 cursor-pointer">
           <Menu size={18} />
         </button>
 
-        <div className="relative flex-1 max-w-xl">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative flex-1 max-w-2xl">
+          <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             ref={inputRef}
             value={q}
@@ -133,10 +133,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
             onFocus={() => setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder="Search transactions, accounts, documents, notes…"
-            className="w-full h-10 rounded-xl bg-slate-50 border border-transparent pl-10 pr-3 sm:pr-16 text-[13px] outline-none transition
-                       placeholder:text-slate-400 focus:bg-white focus:border-brand-300 focus:ring-4 focus:ring-brand-500/10"
+            className="w-full h-12 rounded-full bg-white border border-[#e9eef8] pl-11 pr-3 sm:pr-16 text-[13.5px] outline-none transition
+                       placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-500/10"
           />
-          <kbd className="hidden sm:block absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-white border border-slate-200 rounded px-1.5 py-0.5">
+          <kbd className="hidden sm:block absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5">
             ⌘K
           </kbd>
           {open && hits.length > 0 && (
@@ -163,7 +163,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           )}
         </div>
 
-        <div className="hidden xl:flex items-center gap-2 h-10 px-3 rounded-xl border border-[#e2e8f0] bg-white text-[12px] font-semibold text-slate-600">
+        <div className="hidden xl:flex items-center gap-2 h-11 px-4 rounded-full border border-[#e9eef8] bg-white text-[12px] font-semibold text-slate-600">
           <CalendarDays size={14} className="text-slate-400" />
           {fmtDate(settings.periodStart)} – {fmtDate(settings.periodEnd)}
         </div>
@@ -172,7 +172,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
           <select
             value={settings.baseCurrency}
             onChange={(e) => updateSettings({ baseCurrency: e.target.value as Currency })}
-            className="h-10 rounded-xl border border-[#e2e8f0] bg-white pl-3 pr-8 text-[12px] font-semibold text-slate-600 outline-none appearance-none cursor-pointer focus:border-brand-300"
+            className="h-11 rounded-full border border-[#e9eef8] bg-white pl-4 pr-8 text-[12px] font-semibold text-slate-600 outline-none appearance-none cursor-pointer focus:border-brand-300"
           >
             <option value="AED">AED</option>
             <option value="INR">INR</option>
@@ -186,7 +186,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative h-10 w-10 grid place-items-center rounded-xl border border-[#e2e8f0] bg-white text-slate-500 hover:bg-slate-50 cursor-pointer"
+            className="relative h-11 w-11 grid place-items-center rounded-full border border-[#e9eef8] bg-white text-slate-500 hover:bg-slate-50 cursor-pointer"
           >
             <Bell size={16} />
             {alerts.length > 0 && (
@@ -226,9 +226,9 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
         <div className="relative" ref={userRef}>
           <button
             onClick={() => setUserOpen((v) => !v)}
-            className="flex items-center gap-2.5 h-10 pl-1.5 pr-3 rounded-xl border border-[#e2e8f0] bg-white hover:bg-slate-50 cursor-pointer"
+            className="flex items-center gap-2.5 h-11 pl-1.5 pr-1.5 lg:pr-3 rounded-full border border-[#e9eef8] bg-white hover:bg-slate-50 cursor-pointer"
           >
-            <span className="h-7 w-7 rounded-lg bg-gradient-to-br from-brand-500 to-cyan-400 grid place-items-center text-white text-[12px] font-bold">
+            <span className="h-8 w-8 rounded-full bg-gradient-to-br from-brand-500 to-cyan-400 grid place-items-center text-white text-[12px] font-bold">
               {settings.userName.charAt(0)}
             </span>
             <span className="hidden lg:block leading-tight text-left">

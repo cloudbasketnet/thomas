@@ -54,7 +54,7 @@ export function InstallAppButton({ className = '' }: { className?: string }) {
     <>
       <button
         onClick={install}
-        className={`h-10 px-3 shrink-0 rounded-xl border border-brand-200 bg-brand-50 text-brand-700 text-[12.5px] font-semibold inline-flex items-center gap-1.5 hover:bg-brand-100 cursor-pointer ${className}`}
+        className={`h-11 px-3.5 shrink-0 rounded-full border border-brand-200 bg-brand-50 text-brand-700 text-[12.5px] font-semibold inline-flex items-center gap-1.5 hover:bg-brand-100 cursor-pointer ${className}`}
         title="Install CloudBasket on this device"
         aria-label="Install CloudBasket on this device"
       >

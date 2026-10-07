@@ -77,7 +77,7 @@ export function Sidebar({
 
   return (
     <aside
-      className={`h-full shrink-0 bg-white border-r border-[#e8edf5] flex flex-col ${collapsed ? 'w-[68px]' : 'w-[228px]'}`}
+      className={`h-full shrink-0 bg-white border-r border-[#eaeff8] flex flex-col ${collapsed ? 'w-[72px]' : 'w-[244px]'}`}
     >
       <div className={collapsed ? 'px-2 pt-4 pb-3' : 'px-4 pt-4 pb-3'}>
         <div className={`flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''}`}>
@@ -117,10 +117,12 @@ export function Sidebar({
               aria-label={label}
               className={({ isActive }) =>
                 [
-                  'group relative flex items-center rounded-lg text-[12.5px] font-semibold transition-all',
-                  collapsed ? 'justify-center h-10 mt-0.5' : 'gap-2.5 px-2.5 h-9',
+                  'group relative flex items-center rounded-xl text-[13px] font-semibold transition-all',
+                  collapsed ? 'justify-center h-11 mt-1' : 'gap-3 px-3 h-11 mt-0.5',
+                  // The active row is an amber pill with ink-dark text, not a
+                  // filled brand-blue bar — see the reference design.
                   isActive
-                    ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
+                    ? 'bg-accent-300 text-ink shadow-sm shadow-accent-300/50'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
                 ].join(' ')
               }
@@ -128,8 +130,8 @@ export function Sidebar({
               {({ isActive }) => (
                 <>
                   <Icon
-                    size={collapsed ? 17 : 15}
-                    className={isActive ? 'text-white shrink-0' : 'text-slate-400 group-hover:text-slate-600 shrink-0'}
+                    size={collapsed ? 18 : 17}
+                    className={isActive ? 'text-ink shrink-0' : 'text-slate-400 group-hover:text-slate-600 shrink-0'}
                   />
                   {!collapsed && <span className="flex-1 truncate">{label}</span>}
                   {count > 0 && (
@@ -137,7 +139,7 @@ export function Sidebar({
                       className={[
                         'grid place-items-center rounded-full font-bold shrink-0',
                         collapsed ? 'absolute top-1 right-1 h-4 min-w-4 px-1 text-[9px]' : 'h-4 min-w-4 px-1 text-[9.5px]',
-                        isActive ? 'bg-white/25 text-white' : 'bg-rose-500 text-white',
+                        isActive ? 'bg-ink/15 text-ink' : 'bg-rose-500 text-white',
                       ].join(' ')}
                     >
                       {count}

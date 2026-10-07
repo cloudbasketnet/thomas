@@ -5,8 +5,8 @@ import {
 import { compact, money, pct } from '@/lib/format'
 
 export const PALETTE = [
-  '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
-  '#06b6d4', '#ef4444', '#eab308', '#64748b', '#14b8a6',
+  '#2563eb', '#fbbf24', '#10b981', '#8b5cf6', '#ec4899',
+  '#06b6d4', '#ef4444', '#f97316', '#94a3b8', '#14b8a6',
 ]
 
 const axis = { fontSize: 11, fill: '#94a3b8' }
@@ -55,7 +55,7 @@ export function IncomeExpenseBars({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 5, left: -18, bottom: 0 }} barGap={3}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
         <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} cursor={{ fill: '#f1f5f9' }} />
@@ -66,8 +66,8 @@ export function IncomeExpenseBars({
           verticalAlign="top"
           align="right"
         />
-        <Bar {...STATIC} dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} maxBarSize={16} />
-        <Bar {...STATIC} dataKey="expenses" name="Expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} maxBarSize={16} />
+        <Bar {...STATIC} dataKey="income" name="Income" fill="#fbbf24" radius={[6, 6, 0, 0]} maxBarSize={16} />
+        <Bar {...STATIC} dataKey="expenses" name="Expenses" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={16} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -90,7 +90,7 @@ export function SingleBars({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 5, right: 5, left: -18, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
         <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} cursor={{ fill: '#f1f5f9' }} />
@@ -109,13 +109,13 @@ export function TrendLine({ data, height = 220 }: { data: any[]; height?: number
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
         <XAxis dataKey="month" tick={axis} axisLine={false} tickLine={false} />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} verticalAlign="top" align="right" />
-        <Line {...STATIC} type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2.5} dot={false} />
-        <Line {...STATIC} type="monotone" dataKey="expenses" name="Expenses" stroke="#f43f5e" strokeWidth={2.5} dot={false} />
+        <Line {...STATIC} type="monotone" dataKey="income" name="Income" stroke="#fbbf24" strokeWidth={2.5} dot={false} />
+        <Line {...STATIC} type="monotone" dataKey="expenses" name="Expenses" stroke="#2563eb" strokeWidth={2.5} dot={false} />
         <Line {...STATIC} type="monotone" dataKey="net" name="Net" stroke="#3b82f6" strokeWidth={2} strokeDasharray="4 4" dot={false} />
       </LineChart>
     </ResponsiveContainer>
@@ -283,7 +283,7 @@ export function Gauge({
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label={`${centerLabel}: ${centerValue}`}>
-      <path d={arcPath(cx, cy, r, 0, 1)} stroke="#eef2f7" strokeWidth={16} fill="none" strokeLinecap="round" />
+      <path d={arcPath(cx, cy, r, 0, 1)} stroke="#e9eef8" strokeWidth={16} fill="none" strokeLinecap="round" />
       {segments.map((s, i) => {
         const from = i === 0 ? 0 : segments[i - 1].to
         return <path key={s.color + i} d={arcPath(cx, cy, r, from, s.to)} stroke={s.color} strokeWidth={16} fill="none" />
@@ -329,7 +329,7 @@ export function DayBars({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 18, right: 5, left: -18, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
         <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} interval="preserveStartEnd" />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} cursor={{ fill: '#f1f5f9' }} />
@@ -353,7 +353,7 @@ export function CashFlowLine({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eef2f7" />
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
         <XAxis dataKey="label" tick={axis} axisLine={false} tickLine={false} minTickGap={24} />
         <YAxis tick={axis} axisLine={false} tickLine={false} tickFormatter={(v) => compact(v)} />
         <Tooltip content={<TipBox />} />

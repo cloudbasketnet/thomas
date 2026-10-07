@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { CalendarClock, CheckCircle2, ListChecks, Pencil, Plus, ReceiptText, Sparkles, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Empty, PageHeader, Progress, StatCard, Switch } from '@/components/ui/Primitives'
+import { Card, CardHead, Empty, Progress, StatCard, Switch } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { ScheduleEditor, ScheduleView, PayModal } from '@/components/PaymentSchedule'
 import { allSchedulesTotal, generateSchedule, installmentStatus, resolvePlan, scheduleSummary, MAX_INSTALLMENTS, type GenerateMode } from '@/lib/schedules'
@@ -29,7 +29,13 @@ const blank = () => ({
   genStart: TODAY, currency: 'AED' as Currency,
 })
 
-export default function Installments() {
+/**
+ * The instalment half of Loans & EMIs: a fee or purchase split into dated
+ * parts. Stored as a `Note` carrying a `schedule`, not as a `Loan` — there is
+ * no principal or interest rate to amortize, just a list of payments. The
+ * parent page shows the summary row that covers this and the loans together.
+ */
+export function InstallmentsSection() {
   const { notes, people, transactions, settings, addNote, updateNote, removeNote, payInstallment, updateSettings } = useStore()
   const catColor = (settings.extra?.theme?.categoryColors ?? DEFAULT_THEME.categoryColors).installment
   const txnIds = useMemo(() => new Set(transactions.map((t) => t.id)), [transactions])
@@ -136,14 +142,15 @@ export default function Installments() {
   }
 
   return (
-    <div className="space-y-5 max-w-[1600px]">
-      <PageHeader
-        title="Installments"
-        subtitle="Fees and purchases paid in parts — each installment becomes its own reminder and lands in the budget of the month it falls due."
-        actions={<button className="btn-primary" onClick={openAdd}><Plus size={15} /> Add Installment Plan</button>}
-      />
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[12.5px] text-slate-500">
+          Fees and purchases paid in parts — each instalment becomes its own reminder and lands in the budget of the month it falls due.
+        </p>
+        <button className="btn-primary shrink-0" onClick={openAdd}><Plus size={15} /> Add EMI Plan</button>
+      </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active Plans" value={String(totals.active)} icon={<ListChecks size={20} />} tint="#3b82f6" footer={<span className="text-slate-400">{plans.length} total</span>} />
         <StatCard label="Total Committed" value={money(totals.total)} icon={<ReceiptText size={20} />} tint={catColor} />
         <StatCard label="Paid So Far" value={money(totals.paid)} icon={<CheckCircle2 size={20} />} tint="#10b981"

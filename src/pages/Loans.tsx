@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, Banknote, CalendarClock, HandCoins, Landmark, Pencil, Plus, Trash2 } from 'lucide-react'
+import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard, statusTone } from '@/components/ui/Primitives'
+import { Badge, Card, CardHead, Empty, Progress, statusTone } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { TransferModal } from '@/components/TransferModal'
 import { TransactionModal } from '@/components/TransactionModal'
@@ -10,13 +10,18 @@ import { accountLabel, isAssetAccount } from '@/lib/accounting'
 import { amortizationSchedule, amortizes } from '@/lib/amortization'
 import { daysLeft, fmtDate, money, pct, toBase, TODAY } from '@/lib/format'
 import { loanSummary } from '@/lib/selectors'
-import { DEFAULT_THEME } from '@/lib/theme'
 import type { Currency, Loan, Transaction, Transfer } from '@/types'
 
-export default function Loans() {
-  const { loans, accounts, transactions, transfers, settings, addLoan, updateLoan, removeLoan, addTransfer, removeTransfer, removeTransaction } =
+/**
+ * The borrowing half of Loans & EMIs. It owns the `Loan` records — balances,
+ * interest, amortization and the activity ledger. Instalment plans are a
+ * different shape entirely and live in `InstallmentsSection` on the same page.
+ * No page header or summary row of its own: the parent page shows one that
+ * covers both halves.
+ */
+export function LoansSection() {
+  const { loans, accounts, transactions, transfers, addLoan, updateLoan, removeLoan, addTransfer, removeTransfer, removeTransaction } =
     useStore()
-  const catColor = (settings.extra?.theme?.categoryColors ?? DEFAULT_THEME.categoryColors).loan
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Loan | null>(null)
   const [payFor, setPayFor] = useState<Loan | null>(null)
@@ -36,26 +41,14 @@ export default function Loans() {
   const paidOff = totalPrincipal - s.outstanding
 
   return (
-    <div className="space-y-5 max-w-[1600px]">
-      <PageHeader
-        title="Loans"
-        subtitle="Track every loan, EMI and payment schedule across currencies."
-        actions={
-          <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>
-            <Plus size={15} /> Add Loan
-          </button>
-        }
-      />
-
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Outstanding" value={money(s.outstanding)} icon={<Landmark size={20} />} tint="#ef4444"
-          footer={<span className="text-slate-400">{s.active.length} active loans</span>} />
-        <StatCard label="Monthly EMI" value={money(s.monthlyEmi)} icon={<Banknote size={20} />} tint={catColor}
-          footer={<span className="text-slate-400">Across all loans</span>} />
-        <StatCard label="Due This Month" value={money(s.dueAmount)} icon={<CalendarClock size={20} />} tint="#f59e0b"
-          footer={<span className="text-slate-400">{s.dueThisMonth.length} payments scheduled</span>} />
-        <StatCard label="Paid Off" value={money(paidOff)} icon={<HandCoins size={20} />} tint="#10b981"
-          footer={<div><div className="text-[10px] text-slate-400 mb-1">{pct(paidOff, totalPrincipal)}% of total borrowed</div><Progress value={paidOff} max={totalPrincipal} color="#10b981" height={5} /></div>} />
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <p className="text-[12.5px] text-slate-500">
+          {s.active.length} active loan{s.active.length === 1 ? '' : 's'} · {money(paidOff)} of {money(totalPrincipal)} repaid ({pct(paidOff, totalPrincipal)}%)
+        </p>
+        <button className="btn-primary" onClick={() => { setEditing(null); setModal(true) }}>
+          <Plus size={15} /> Add Loan
+        </button>
       </div>
 
       {s.overdue.length > 0 && (

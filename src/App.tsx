@@ -11,9 +11,8 @@ const Expenses = lazy(() => import('@/pages/Expenses'))
 const ExpenseReport = lazy(() => import('@/pages/ExpenseReport'))
 const Categories = lazy(() => import('@/pages/Categories'))
 const Budget = lazy(() => import('@/pages/Budget'))
-const Loans = lazy(() => import('@/pages/Loans'))
+const LoansEmis = lazy(() => import('@/pages/LoansEmis'))
 const People = lazy(() => import('@/pages/People'))
-const Installments = lazy(() => import('@/pages/Installments'))
 const Bills = lazy(() => import('@/pages/Bills'))
 const Documents = lazy(() => import('@/pages/Documents'))
 const Notes = lazy(() => import('@/pages/Notes'))
@@ -47,7 +46,7 @@ export default function App() {
             {/* Purchases merged into the expense report; keep old links working. */}
             <Route path="purchases" element={<Navigate to="/expense-report" replace />} />
             <Route path="budget" element={<Budget />} />
-            <Route path="loans" element={<Loans />} />
+            <Route path="loans" element={<LoansEmis />} />
             <Route path="people" element={<People />} />
             <Route path="bills" element={<Bills />} />
             <Route path="documents" element={<Documents />} />
@@ -58,7 +57,8 @@ export default function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="profit-loss" element={<ProfitLoss />} />
             <Route path="forecast" element={<Forecast />} />
-            <Route path="installments" element={<Installments />} />
+            {/* Instalments merged into Loans & EMIs; keep old links working. */}
+            <Route path="installments" element={<Navigate to="/loans" replace />} />
             <Route path="assets" element={<Assets />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="ai-advisor" element={<AIAdvisor />} />

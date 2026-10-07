@@ -351,7 +351,7 @@ export function actionCentre(
       label: 'Upcoming instalments',
       detail: `Next payment ${shortDate(next.dueDate)}`,
       count: upcomingInst.length,
-      to: '/installments',
+      to: '/loans',
       tone: 'violet',
     })
   }

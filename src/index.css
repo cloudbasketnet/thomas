@@ -274,3 +274,49 @@
 [data-theme='dark'] .bg-slate-50\/60 { background-color: rgb(255 255 255 / 0.03); }
 [data-theme='dark'] aside { background: #0d1626; }
 [data-theme='dark'] .shadow-lg { box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.6); }
+
+/* =========================================================================
+   Density. <html data-density="compact|cosy|roomy">
+   Compact is the default and matches the reference design: the repeated
+   elements — stat tiles, card headings, table rows, fields, chips — carry
+   most of a page's height, so tightening those is what fits another section
+   on screen. Page titles are left alone; there is only ever one of those.
+   ========================================================================= */
+[data-density='compact'] {
+  --card-head-py-t: 1rem;
+  --card-head-py-b: 0.625rem;
+  --card-head-px: 1rem;
+}
+[data-density='compact'] .card-title { font-size: 13.5px; }
+[data-density='compact'] .card-pad { padding: 1rem; }
+[data-density='compact'] .th { padding: 0.5rem 0.875rem; font-size: 10.5px; }
+[data-density='compact'] .td { padding: 0.5rem 0.875rem; font-size: 12.5px; }
+[data-density='compact'] .input { height: 2.375rem; font-size: 12.5px; }
+[data-density='compact'] .label { font-size: 11.5px; margin-bottom: 0.25rem; }
+[data-density='compact'] .chip { padding-inline: 0.625rem; font-size: 10.5px; }
+[data-density='compact'] .btn,
+[data-density='compact'] .btn-primary,
+[data-density='compact'] .btn-ghost,
+[data-density='compact'] .btn-soft,
+[data-density='compact'] .btn-green,
+[data-density='compact'] .btn-rose { height: 2.375rem; font-size: 12.5px; padding-inline: 0.875rem; }
+
+[data-density='roomy'] {
+  --card-head-py-t: 1.5rem;
+  --card-head-py-b: 1rem;
+  --card-head-px: 1.5rem;
+}
+[data-density='roomy'] .card-title { font-size: 16px; }
+[data-density='roomy'] .card-pad { padding: 1.5rem; }
+[data-density='roomy'] .td { padding: 1rem; font-size: 13.5px; }
+
+/* A touch device still needs thumb-sized targets, whatever the density. */
+@media (pointer: coarse) {
+  [data-density='compact'] .btn,
+  [data-density='compact'] .btn-primary,
+  [data-density='compact'] .btn-ghost,
+  [data-density='compact'] .btn-soft,
+  [data-density='compact'] .btn-green,
+  [data-density='compact'] .btn-rose,
+  [data-density='compact'] .input { height: 2.75rem; }
+}

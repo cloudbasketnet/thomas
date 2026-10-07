@@ -23,7 +23,14 @@ export function CardHead({
   right?: ReactNode
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3.5">
+    <div
+      className="flex items-center justify-between gap-2"
+      style={{
+        paddingInline: 'var(--card-head-px, 1.25rem)',
+        paddingTop: 'var(--card-head-py-t, 1.25rem)',
+        paddingBottom: 'var(--card-head-py-b, 0.875rem)',
+      }}
+    >
       <div className="min-w-0">
         <h3 className="card-title leading-tight">{title}</h3>
         {sub && <p className="text-[11.5px] text-slate-500 mt-0.5">{sub}</p>}
@@ -108,10 +115,21 @@ export function PageHeader({
 
 /** Card padding, icon box and value size for each of the four global card sizes (see Settings → Appearance). */
 const STAT_CARD_SIZES: Record<CardSize, { pad: string; icon: string; value: string }> = {
-  Compact: { pad: 'p-3', icon: 'h-7 w-7', value: 'text-[13px]' },
-  Standard: { pad: 'p-4', icon: 'h-9 w-9', value: 'text-[clamp(15px,1.35vw,20px)]' },
+  Compact: { pad: 'p-2.5', icon: 'h-7 w-7', value: 'text-[13px]' },
+  Standard: { pad: 'p-3.5', icon: 'h-9 w-9', value: 'text-[clamp(14px,1.25vw,19px)]' },
   Wide: { pad: 'p-5', icon: 'h-10 w-10', value: 'text-[clamp(17px,1.5vw,22px)]' },
   Full: { pad: 'p-6', icon: 'h-11 w-11', value: 'text-[clamp(19px,1.7vw,26px)]' },
+}
+
+/**
+ * A row of stat tiles is the tallest repeated thing on most pages, so density
+ * takes one notch off the padding and the label on top of whatever card size
+ * is chosen. Roomy goes the other way.
+ */
+const STAT_DENSITY: Record<string, { pad: string; label: string; gap: string }> = {
+  compact: { pad: 'p-3', label: 'text-[10.5px]', gap: 'gap-2.5' },
+  cosy: { pad: '', label: 'text-[11.5px]', gap: 'gap-3' },
+  roomy: { pad: 'p-5', label: 'text-[12px]', gap: 'gap-3.5' },
 }
 
 export function StatCard({
@@ -128,7 +146,9 @@ export function StatCard({
   footer?: ReactNode
 }) {
   const cardSize = useStore((s) => s.settings.extra?.theme?.cardSize) ?? DEFAULT_THEME.cardSize
+  const density = useStore((s) => s.settings.extra?.theme?.density) ?? DEFAULT_THEME.density
   const sz = STAT_CARD_SIZES[cardSize] ?? STAT_CARD_SIZES.Standard
+  const dn = STAT_DENSITY[density.toLowerCase()] ?? STAT_DENSITY.cosy
   return (
     // A row of tiles should read as a row of colours, not a row of white boxes.
     // The tint is painted as a flat translucent layer over whatever background
@@ -137,7 +157,7 @@ export function StatCard({
     // rather than color-mix() so there is no fallback that could paint the
     // tile in full-strength colour on an older browser.
     <div
-      className={cx('card flex items-start gap-3 hover:-translate-y-0.5 transition-transform duration-200', sz.pad)}
+      className={cx('card flex items-start hover:-translate-y-0.5 transition-transform duration-200', dn.gap, dn.pad || sz.pad)}
       style={{ backgroundImage: `linear-gradient(${tint}14, ${tint}14)`, borderColor: `${tint}2b` } as CSSProperties}
     >
       <div
@@ -147,10 +167,10 @@ export function StatCard({
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-[11.5px] font-semibold text-slate-500 truncate" title={label}>
+        <p className={cx('font-semibold text-slate-500 truncate', dn.label)} title={label}>
           {label}
         </p>
-        <p className={cx('font-extrabold tracking-tight text-slate-900 mt-1 whitespace-nowrap overflow-hidden text-ellipsis', sz.value)}>
+        <p className={cx('font-extrabold tracking-tight text-slate-900 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis', sz.value)}>
           {value}
         </p>
         {footer && <div className="mt-1.5 text-[10.5px] leading-snug">{footer}</div>}

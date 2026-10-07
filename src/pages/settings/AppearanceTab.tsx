@@ -2,7 +2,7 @@ import { Check, Landmark, Monitor, Moon, Sun } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, StatCard } from '@/components/ui/Primitives'
 import { COLOR_SWATCH, DEFAULT_THEME, applyTheme } from '@/lib/theme'
-import type { CardSize, CardStyle, CategoryColors, StatusColors, ThemeColor, ThemeMode } from '@/types'
+import type { CardSize, CardStyle, CategoryColors, Density, StatusColors, ThemeColor, ThemeMode } from '@/types'
 
 const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
   { key: 'light', label: 'Light', icon: Sun }, { key: 'dark', label: 'Dark', icon: Moon }, { key: 'system', label: 'Match device', icon: Monitor },
@@ -11,6 +11,11 @@ const CARDS: { key: CardStyle; label: string; hint: string }[] = [
   { key: 'soft', label: 'Soft', hint: 'Gentle shadow (default)' },
   { key: 'flat', label: 'Flat', hint: 'Thin outline, no shadow' },
   { key: 'glass', label: 'Glass', hint: 'Frosted, translucent cards' },
+]
+const DENSITIES: { key: Density; hint: string }[] = [
+  { key: 'Compact', hint: 'Tightest — the most on screen at once (default)' },
+  { key: 'Cosy', hint: 'A little more breathing room' },
+  { key: 'Roomy', hint: 'Largest text and padding' },
 ]
 const SIZES: { key: CardSize; hint: string }[] = [
   { key: 'Compact', hint: 'Tightest padding and text' },
@@ -79,6 +84,26 @@ export function AppearanceTab() {
               <p className="text-[11px] text-slate-400">{c.hint}</p>
             </button>
           ))}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHead title="Density" sub="How tight the text and spacing are on every screen" />
+        <div className="px-5 pb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {DENSITIES.map((d) => (
+              <button
+                key={d.key}
+                onClick={() => set({ density: d.key })}
+                className={`rounded-xl border p-4 text-left cursor-pointer transition ${
+                  (theme.density ?? DEFAULT_THEME.density) === d.key ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-[#e2e8f0] hover:border-brand-200'
+                }`}
+              >
+                <p className="text-[13px] font-bold text-slate-800">{d.key}</p>
+                <p className="text-[11px] text-slate-400">{d.hint}</p>
+              </button>
+            ))}
+          </div>
         </div>
       </Card>
 

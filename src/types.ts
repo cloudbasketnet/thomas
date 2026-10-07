@@ -255,6 +255,8 @@ export type ThemeColor = 'blue' | 'emerald' | 'violet' | 'rose' | 'amber' | 'sla
 export type CardStyle = 'soft' | 'flat' | 'glass'
 /** Dashboard card density — a single, app-wide choice rather than per-card resizing. */
 export type CardSize = 'Compact' | 'Standard' | 'Wide' | 'Full'
+/** How tight the type and spacing are across every screen. */
+export type Density = 'Compact' | 'Cosy' | 'Roomy'
 
 /** Colour used for a category of figure wherever this app deliberately reads it from the theme. */
 export interface CategoryColors {
@@ -315,7 +317,7 @@ export interface FamilyAdvisorProfile {
 export interface SettingsExtra {
   theme?: {
     mode: ThemeMode; color: ThemeColor; cardStyle: CardStyle
-    cardSize?: CardSize; categoryColors?: CategoryColors; statusColors?: StatusColors
+    cardSize?: CardSize; density?: Density; categoryColors?: CategoryColors; statusColors?: StatusColors
   }
   profilePhoto?: string
   statusTiers?: StatusTier[]

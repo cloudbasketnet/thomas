@@ -49,6 +49,46 @@ export function byCategory(txns: Transaction[], type: 'income' | 'expense', mont
     .sort((a, b) => b.value - a.value)
 }
 
+/**
+ * Every day of a month that had activity, newest first — the day-by-day table
+ * on the Income and Expenses dashboards.
+ *
+ * Same inclusion rules as byCategory, so a day's total and that month's
+ * category totals are always made of exactly the same transactions. Days with
+ * nothing on them are left out rather than listed as zeroes.
+ */
+export function byDay(txns: Transaction[], type: 'income' | 'expense', month = CURRENT_MONTH) {
+  const map = new Map<string, { total: number; count: number; cats: Map<string, number> }>()
+  for (const t of inMonth(txns, month)) {
+    if (type === 'income' ? !isEarned(t) : !isSpend(t)) continue
+    const v = type === 'income' ? toBase(t.amount, t.currency) : spendValue(t)
+    const day = map.get(t.date) ?? { total: 0, count: 0, cats: new Map<string, number>() }
+    day.total += v
+    day.count += 1
+    day.cats.set(t.category, (day.cats.get(t.category) ?? 0) + v)
+    map.set(t.date, day)
+  }
+  const rows = [...map.entries()]
+    .map(([date, d]) => ({
+      date,
+      total: d.total,
+      count: d.count,
+      // What the day mostly went on, for the "where it went" column.
+      top: [...d.cats.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '—',
+      categories: [...d.cats.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  const total = rows.reduce((a, r) => a + r.total, 0)
+  return {
+    rows,
+    total,
+    /** Averaged over days that had activity, not over the whole month. */
+    average: rows.length ? total / rows.length : 0,
+    busiest: [...rows].sort((a, b) => b.total - a.total)[0],
+  }
+}
+
 export function byPerson(txns: Transaction[], month = CURRENT_MONTH) {
   const map = new Map<string, number>()
   for (const t of inMonth(txns, month)) {

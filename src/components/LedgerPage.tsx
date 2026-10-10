@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowDownCircle, ArrowUpCircle, BarChart3, CalendarDays, LayoutGrid, Lightbulb, Pencil, Plus, Star, Target,
-  Trash2, X,
+  ArrowDownCircle, ArrowUpCircle, BarChart3, CalendarDays, ChevronDown, ChevronRight, LayoutGrid, Lightbulb, Pencil,
+  Plus, Star, Target, Trash2, X,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, PageHeader, Progress, StatCard, Empty } from '@/components/ui/Primitives'
@@ -12,7 +12,7 @@ import { ReceiptList } from '@/components/ReceiptList'
 import { ReceiptModal } from '@/components/ReceiptModal'
 import { groupReceipts, type ReceiptEntry } from '@/lib/receipts'
 import { fmtDate, money, monthLabel, pct, toBase } from '@/lib/format'
-import { CURRENT_MONTH, PREV_MONTH, byAccount, byCategory, byMethod, currentMonthLabel, inMonth, isEarned, isSpend, monthlySeries, seriesRange, spendValue, totals } from '@/lib/selectors'
+import { CURRENT_MONTH, PREV_MONTH, byAccount, byCategory, byDay, byMethod, currentMonthLabel, inMonth, isEarned, isSpend, monthlySeries, seriesRange, spendValue, totals } from '@/lib/selectors'
 import type { Transaction, TxnType } from '@/types'
 
 export function LedgerPage({ type }: { type: TxnType }) {
@@ -27,12 +27,15 @@ export function LedgerPage({ type }: { type: TxnType }) {
   const [editing, setEditing] = useState<Transaction | null>(null)
   const [banner, setBanner] = useState(true)
   const [q, setQ] = useState('')
+  const [openDay, setOpenDay] = useState<string | null>(null)
+  const [allDays, setAllDays] = useState(false)
 
   const t = useMemo(() => totals(transactions), [transactions])
   const prev = useMemo(() => totals(transactions, PREV_MONTH), [transactions])
   const cats = useMemo(() => byCategory(transactions, type), [transactions, type])
   const accs = useMemo(() => byAccount(transactions, type, accounts), [transactions, accounts, type])
   const methods = useMemo(() => byMethod(transactions), [transactions])
+  const days = useMemo(() => byDay(transactions, type), [transactions, type])
   const series = useMemo(
     () => monthlySeries(transactions).map((m) => ({ month: m.month, value: isIncome ? m.income : m.expenses })),
     [transactions, isIncome],
@@ -212,6 +215,18 @@ export function LedgerPage({ type }: { type: TxnType }) {
               </div>
             </Card>
           </div>
+
+          <DayByDay
+            data={days}
+            all={allDays}
+            onShowAll={() => setAllDays((v) => !v)}
+            label={isIncome ? 'Income' : 'Spending'}
+            accent={accent}
+            open={openDay}
+            onToggle={(d) => setOpenDay(openDay === d ? null : d)}
+            rows={rows}
+            isIncome={isIncome}
+          />
 
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
             <Card className="lg:col-span-8">
@@ -465,4 +480,131 @@ export function ledgerTotal(txns: Transaction[], type: TxnType) {
   return type === 'income'
     ? inMonth(txns).filter(isEarned).reduce((a, t) => a + toBase(t.amount, t.currency), 0)
     : inMonth(txns).reduce((a, t) => a + spendValue(t), 0)
+}
+
+/**
+ * Day-by-day table for the Income and Expenses dashboards: what each day of
+ * this month came to, how many entries made it up, and what most of it went
+ * on. A day opens to show the entries behind the figure, so the total is
+ * never something you have to take on trust.
+ */
+function DayByDay({
+  data, label, accent, open, onToggle, rows, isIncome, all, onShowAll,
+}: {
+  data: ReturnType<typeof byDay>
+  label: string
+  accent: string
+  open: string | null
+  onToggle: (date: string) => void
+  rows: Transaction[]
+  isIncome: boolean
+  all: boolean
+  onShowAll: () => void
+}) {
+  const shown = all ? data.rows : data.rows.slice(0, 10)
+  const peak = data.busiest?.total ?? 0
+
+  return (
+    <Card>
+      <CardHead
+        title={`${label} Day by Day`}
+        sub={`${currentMonthLabel()} · ${data.rows.length} day${data.rows.length === 1 ? '' : 's'} with activity`}
+        right={
+          data.rows.length > 10 ? (
+            <button className="btn-ghost h-8" onClick={onShowAll}>{all ? 'Show less' : `Show all ${data.rows.length}`}</button>
+          ) : undefined
+        }
+      />
+
+      {data.rows.length === 0 ? (
+        <Empty text={`No ${label.toLowerCase()} recorded this month yet.`} />
+      ) : (
+        <>
+          <div className="px-5 pb-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[10.5px] text-slate-400">Month total</p>
+              <p className="text-[14px] font-extrabold text-slate-800 tabular-nums">{money(data.total)}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-[10.5px] text-slate-400">Average on an active day</p>
+              <p className="text-[14px] font-extrabold text-slate-800 tabular-nums">{money(data.average)}</p>
+            </div>
+            <div className="rounded-xl bg-slate-50 px-3 py-2 col-span-2 sm:col-span-1">
+              <p className="text-[10.5px] text-slate-400">Busiest day</p>
+              <p className="text-[14px] font-extrabold text-slate-800 tabular-nums">
+                {data.busiest ? `${fmtDate(data.busiest.date)} · ${money(data.busiest.total)}` : '—'}
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto scroll-thin">
+            <table className="w-full min-w-[640px]">
+              <thead className="bg-slate-50/70">
+                <tr>
+                  <th className="th w-8" />
+                  <th className="th">Date</th>
+                  <th className="th text-right">Entries</th>
+                  <th className="th">Mostly on</th>
+                  <th className="th">Share of the month</th>
+                  <th className="th text-right">Total</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f1f5f9]">
+                {shown.map((d) => {
+                  const isOpen = open === d.date
+                  const entries = rows.filter((r) => r.date === d.date)
+                  return (
+                    <Fragment key={d.date}>
+                      <tr className="row-hover cursor-pointer" onClick={() => onToggle(d.date)}>
+                        <td className="td text-slate-400">{isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</td>
+                        <td className="td font-semibold text-slate-800 whitespace-nowrap">{fmtDate(d.date)}</td>
+                        <td className="td text-right text-slate-500 tabular-nums">{d.count}</td>
+                        <td className="td text-slate-500 truncate">{d.top}</td>
+                        <td className="td">
+                          <div className="flex items-center gap-2">
+                            <Progress value={d.total} max={peak || 1} color={accent} height={6} />
+                            <span className="text-[11px] font-bold text-slate-400 w-9 text-right tabular-nums">{pct(d.total, data.total)}%</span>
+                          </div>
+                        </td>
+                        <td className="td text-right font-extrabold tabular-nums">{money(d.total)}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr className="bg-slate-50/60">
+                          <td />
+                          <td colSpan={5} className="px-4 py-3">
+                            <table className="w-full text-[12.5px]">
+                              <tbody>
+                                {entries.map((e) => (
+                                  <tr key={e.id} className="border-t border-[#eef2f8] first:border-0">
+                                    <td className="py-1.5 font-semibold text-slate-700">{e.description}</td>
+                                    <td className="py-1.5 text-slate-500">{e.category}</td>
+                                    <td className="py-1.5 text-slate-400">{e.person || 'Me'}</td>
+                                    <td className="py-1.5 text-right font-bold tabular-nums">{money(e.amount, e.currency)}</td>
+                                  </tr>
+                                ))}
+                                {entries.length === 0 && (
+                                  <tr><td className="py-2 text-slate-400">Nothing to show for this day.</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+              <tfoot className="bg-slate-50/70">
+                <tr>
+                  <td className="td" />
+                  <td className="td font-bold" colSpan={4}>{isIncome ? 'Earned' : 'Spent'} in {currentMonthLabel()}</td>
+                  <td className="td text-right font-extrabold tabular-nums">{money(data.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  )
 }

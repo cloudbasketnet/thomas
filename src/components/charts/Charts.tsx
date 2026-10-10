@@ -18,10 +18,16 @@ const axis = { fontSize: 11, fill: '#94a3b8' }
  */
 const STATIC = { isAnimationActive: false } as const
 
-/** Placeholder for a chart with nothing to draw yet. */
+/**
+ * Placeholder for a chart with nothing to draw yet. It does NOT hold the
+ * chart's full height open: a card with no data was reserving 230px to say
+ * one short line, and a dashboard of those is mostly empty space. A chart
+ * that does have data is unaffected.
+ */
 function NoData({ height, text = 'No data yet' }: { height: number | string; text?: string }) {
+  const h = typeof height === 'number' ? Math.min(height, 110) : height
   return (
-    <div className="grid place-items-center text-[12px] text-slate-400" style={{ height }}>
+    <div className="grid place-items-center text-[12px] text-slate-400" style={{ height: h }}>
       {text}
     </div>
   )
@@ -282,7 +288,17 @@ export function Gauge({
   const needle = polar(cx, cy, r - 24, fraction)
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full" role="img" aria-label={`${centerLabel}: ${centerValue}`}>
+    // w-full alone scales the dial to whatever the column is wide, and because
+    // the viewBox fixes the aspect ratio that comes straight back as height —
+    // a 600px-wide card was drawing a 360px-tall gauge and leaving the card
+    // mostly empty below it. It grows to its natural size and stops.
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="w-full mx-auto"
+      style={{ maxWidth: width }}
+      role="img"
+      aria-label={`${centerLabel}: ${centerValue}`}
+    >
       <path d={arcPath(cx, cy, r, 0, 1)} stroke="#e9eef8" strokeWidth={16} fill="none" strokeLinecap="round" />
       {segments.map((s, i) => {
         const from = i === 0 ? 0 : segments[i - 1].to

@@ -187,7 +187,7 @@ export default function ExpenseReport() {
       {tab === 'explorer' && <ExpenseExplorer />}
 
       {tab === 'overview' && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
           <Card className="lg:col-span-6 xl:col-span-5">
             <CardHead title="Monthly Spend" right={<span className="chip bg-slate-100 text-slate-500">9 months</span>} />
             <div className="px-3 pb-4">

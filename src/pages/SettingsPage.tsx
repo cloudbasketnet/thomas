@@ -108,7 +108,7 @@ function GeneralSettings() {
         </div>
       )}
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
         <Card>
           <CardHead title="Profile" sub="How CloudBasket 360 greets you" right={<User size={16} className="text-slate-400" />} />
           <div className="px-5 pb-5 grid grid-cols-2 gap-4">

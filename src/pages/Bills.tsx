@@ -58,7 +58,7 @@ export default function Bills() {
           footer={<span className="text-slate-400">{s.overdue.length} bills · {autopayCount} on autopay</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-8">
           <CardHead
             title="All Bills"

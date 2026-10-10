@@ -218,7 +218,7 @@ function CategoryBudgets() {
         </Card>
       )}
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-7 xl:col-span-5">
           <CardHead title="Budget vs Actual" />
           <div className="px-3 pb-4">
@@ -266,7 +266,7 @@ function CategoryBudgets() {
         </Card>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-8">
           <CardHead title="Budget Categories" sub="Budget is editable; spent is calculated from this month's expenses" />
           <div className="overflow-x-auto scroll-thin">

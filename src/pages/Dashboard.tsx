@@ -171,19 +171,19 @@ export default function Dashboard() {
       </div>
 
       {/* Daily spending + the account you watch most */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <DailyExpensesCard />
         <FavouriteBankCard />
       </div>
 
       {/* Card balance + everything with a date on it */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <CreditCardCard />
         <DuePaymentsCard />
       </div>
 
       {/* Charts row */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Income vs Expenses" right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
           {/* Side by side only once the card is wide (xl); below that the totals
@@ -256,19 +256,19 @@ export default function Dashboard() {
       </div>
 
       {/* Where the money is going, and where it is heading */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <CashFlowCard />
         <ExpenseCategoriesCard />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <RecentTransactionsCard />
         <ActionCentreCard />
         <InsightCard />
       </div>
 
       {/* Loans + converter + documents */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-7 xl:col-span-5">
           <CardHead title="Loan Tracker" right={<ViewAll to="/loans" />} />
           <div className="overflow-x-auto scroll-thin">
@@ -367,7 +367,7 @@ export default function Dashboard() {
       </div>
 
       {/* Notes + plan + goals */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Notes & Follow Up" right={<ViewAll to="/notes" />} />
           <div className="px-5 pb-3 flex items-center gap-1.5 flex-wrap">

@@ -162,7 +162,7 @@ export function InstallmentsSection() {
       {plans.length === 0 ? (
         <Card><div className="py-10"><Empty text="No installment plans yet — add one for a fee, purchase or bill paid in parts." /></div></Card>
       ) : (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
           {plans.map((n) => {
             const sum = summaries.get(n.id)!
             const isOpen = expanded === n.id

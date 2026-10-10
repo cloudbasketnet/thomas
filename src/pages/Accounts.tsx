@@ -159,7 +159,7 @@ export default function Accounts() {
           footer={<span className="text-slate-400">Bank + cash, less cards and loans</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-8">
           <div className="px-5 pt-4 flex gap-1 flex-wrap border-b border-[#f1f5f9]">
             {tabs.map((t) => (

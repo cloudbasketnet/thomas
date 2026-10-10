@@ -66,7 +66,7 @@ export default function VisionBoard() {
       </div>
 
       {/* ---- dreams + words ---- */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-8">
           <CardHead title="🎯 My Dreams" sub="Tap a card to edit it" right={<button className="btn-soft" onClick={() => setDreamModal('new')}><Plus size={13} /> Add Dream</button>} />
           <div className="px-5 pb-5">
@@ -115,7 +115,7 @@ export default function VisionBoard() {
       </div>
 
       {/* ---- schedule + today + month ---- */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-4">
           <CardHead title="📅 My Daily Schedule" sub={fmtDate(TODAY)} right={<button className="btn-soft" onClick={() => setBlockModal('new')}><Plus size={13} /> Add</button>} />
           <div className="px-5 pb-5 space-y-1.5">
@@ -187,7 +187,7 @@ export default function VisionBoard() {
       </div>
 
       {/* ---- progress + tools + quick add ---- */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
         <Card className="lg:col-span-5">
           <CardHead title="🎯 Progress Towards Dreams" sub={`${overall}% across ${dreams.length} dream${dreams.length === 1 ? '' : 's'}`} />
           <div className="px-5 pb-5 space-y-3">

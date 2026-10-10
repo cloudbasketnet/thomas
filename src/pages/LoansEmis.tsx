@@ -4,7 +4,7 @@ import { useStore } from '@/store/useStore'
 import { PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
 import { hasSection } from '@/lib/access'
 import { allSchedulesTotal, installmentStatus } from '@/lib/schedules'
-import { loanSummary } from '@/lib/selectors'
+import { loanDebt, loanSummary } from '@/lib/selectors'
 import { fmtDate, money, toBase, TODAY } from '@/lib/format'
 import { DEFAULT_THEME } from '@/lib/theme'
 import { LoansSection } from '@/pages/Loans'
@@ -24,7 +24,7 @@ type Tab = 'loans' | 'plans'
  * records and its own editor, and this page puts one summary over the two.
  */
 export default function LoansEmis() {
-  const { loans, notes, transactions, settings, membership } = useStore()
+  const { loans, notes, accounts, transactions, settings, membership } = useStore()
   const catColor = (settings.extra?.theme?.categoryColors ?? DEFAULT_THEME.categoryColors).loan
 
   // Permissions were granted per old page ('loans' and 'notes'). Merging the
@@ -38,6 +38,7 @@ export default function LoansEmis() {
   const txnIds = useMemo(() => new Set(transactions.map((t) => t.id)), [transactions])
   const plans = useMemo(() => notes.filter((n) => (n.schedule?.length ?? 0) > 0), [notes])
   const ls = useMemo(() => loanSummary(loans), [loans])
+  const debt = useMemo(() => loanDebt(loans, accounts), [loans, accounts])
 
   const ps = useMemo(
     () => allSchedulesTotal(plans, TODAY, (id) => txnIds.has(id), toBase),
@@ -68,16 +69,19 @@ export default function LoansEmis() {
   }, [plans, txnIds])
 
   const totalPrincipal = ls.active.reduce((a, l) => a + toBase(l.principal, l.currency), 0)
-  const loanPaidOff = totalPrincipal - ls.outstanding
+  // A balance can exceed what was borrowed once interest piles on, and then
+  // principal - outstanding goes negative. Nothing has been "repaid -4,340",
+  // so the floor is zero.
+  const loanPaidOff = Math.max(0, totalPrincipal - ls.outstanding)
 
-  const owed = ls.outstanding + ps.outstanding
+  const owed = debt.total + ps.outstanding
   const dueAmount = ls.dueAmount + planDueThisMonth.amount
   const dueCount = ls.dueThisMonth.length + planDueThisMonth.count
   const repaid = loanPaidOff + ps.paid
   const borrowed = totalPrincipal + ps.total
 
   const TABS: { k: Tab; label: string; count: number; show: boolean }[] = [
-    { k: 'loans', label: 'Loans', count: ls.active.length, show: canLoans },
+    { k: 'loans', label: 'Loans', count: debt.count, show: canLoans },
     { k: 'plans', label: 'EMI Plans', count: plans.length, show: canPlans },
   ]
   const visibleTabs = TABS.filter((t) => t.show)
@@ -96,14 +100,14 @@ export default function LoansEmis() {
           value={money(owed)}
           icon={<Landmark size={20} />}
           tint="#ef4444"
-          footer={<span className="text-slate-400">{money(ls.outstanding)} loans · {money(ps.outstanding)} plans</span>}
+          footer={<span className="text-slate-400">{money(debt.total)} loans · {money(ps.outstanding)} plans</span>}
         />
         <StatCard
           label="Monthly EMI"
           value={money(ls.monthlyEmi)}
           icon={<Banknote size={20} />}
           tint={catColor}
-          footer={<span className="text-slate-400">Across {ls.active.length} loan{ls.active.length === 1 ? '' : 's'}</span>}
+          footer={<span className="text-slate-400">Across {debt.count} loan{debt.count === 1 ? '' : 's'}</span>}
         />
         <StatCard
           label="Due This Month"

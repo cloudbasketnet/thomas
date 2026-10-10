@@ -15,7 +15,7 @@ import {
 import { TransactionModal } from '@/components/TransactionModal'
 import { TransferModal } from '@/components/TransferModal'
 import { TODAY, convert, daysLeft, fmtDate, money, pct } from '@/lib/format'
-import { PREV_MONTH, accountTotals, availableMoney, budgetsWithSpend, byPerson, currentMonthLabel, docStatus, loanSummary, monthPlan, monthlySeries, netPosition, totals } from '@/lib/selectors'
+import { PREV_MONTH, accountTotals, availableMoney, loanDebt, budgetsWithSpend, byPerson, currentMonthLabel, docStatus, loanSummary, monthPlan, monthlySeries, netPosition, totals } from '@/lib/selectors'
 import type { Currency, TxnType } from '@/types'
 
 export default function Dashboard() {
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const persons = useMemo(() => byPerson(transactions), [transactions])
   const plan = useMemo(() => monthPlan(transactions, loans, bills, goals), [transactions, loans, bills, goals])
   const ls = useMemo(() => loanSummary(loans), [loans])
+  const debt = useMemo(() => loanDebt(loans, accounts), [loans, accounts])
   const budgets = useMemo(() => budgetsWithSpend(transactions, rawBudgets), [transactions, rawBudgets])
 
   // Liquid funds, debt and net position are kept as separate figures rather
@@ -155,10 +156,10 @@ export default function Dashboard() {
         />
         <StatCard
           label="Loans Outstanding"
-          value={money(ls.outstanding)}
+          value={money(debt.total)}
           icon={<Landmark size={20} />}
           tint="#f97316"
-          footer={<span className="text-slate-400">{ls.active.length} active loan{ls.active.length === 1 ? '' : 's'}</span>}
+          footer={<span className="text-slate-400">{debt.count} active loan{debt.count === 1 ? '' : 's'}</span>}
         />
         <StatCard
           label="Net Position"

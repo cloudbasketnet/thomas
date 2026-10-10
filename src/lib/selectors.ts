@@ -142,13 +142,32 @@ export function availableMoney(accounts: Account[]) {
   return t.bank + t.cash + t.savings + t.investment
 }
 
+/**
+ * Everything owed on borrowing, counted exactly once.
+ *
+ * The same debt can be recorded two ways: as a Loan record, which carries a
+ * principal, a rate and a schedule, or as a loan-type Account, which just
+ * carries a balance. A Loan may also point at its account, and then the two
+ * ARE the same debt.
+ *
+ * So counting only Loans misses a loan account nobody wrote a Loan record for;
+ * counting only accounts misses a Loan with no account behind it; counting
+ * both double-counts every linked pair. This counts the Loans, then adds only
+ * the loan accounts no Loan already speaks for.
+ */
+export function loanDebt(loans: Loan[], accounts: Account[]) {
+  const active = loans.filter((l) => l.status !== 'Closed')
+  const spokenFor = new Set(active.map((l) => l.accountId).filter(Boolean) as string[])
+  const unlinked = accounts.filter((a) => a.type === 'loan' && !spokenFor.has(a.id))
+  const fromLoans = active.reduce((acc, l) => acc + toBase(l.outstanding, l.currency), 0)
+  const fromAccounts = unlinked.reduce((acc, a) => acc + toBase(a.balance, a.currency), 0)
+  return { total: fromLoans + fromAccounts, fromLoans, fromAccounts, unlinked, count: active.length + unlinked.length }
+}
+
 /** What you'd have left if every card and loan were paid off today. */
 export function netPosition(accounts: Account[], loans: Loan[]) {
   const t = accountTotals(accounts)
-  const loansOutstanding = loans
-    .filter((l) => l.status !== 'Closed')
-    .reduce((acc, l) => acc + toBase(l.outstanding, l.currency), 0)
-  return t.bank + t.cash + t.savings + t.investment - t.card - loansOutstanding
+  return t.bank + t.cash + t.savings + t.investment - t.card - loanDebt(loans, accounts).total
 }
 
 export function loanSummary(loans: Loan[]) {

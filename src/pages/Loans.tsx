@@ -38,7 +38,7 @@ export function LoansSection() {
 
   const s = useMemo(() => loanSummary(loans), [loans])
   const totalPrincipal = s.active.reduce((a, l) => a + toBase(l.principal, l.currency), 0)
-  const paidOff = totalPrincipal - s.outstanding
+  const paidOff = Math.max(0, totalPrincipal - s.outstanding)
 
   return (
     <div className="space-y-5">
@@ -81,7 +81,10 @@ export function LoansSection() {
             </thead>
             <tbody className="divide-y divide-[#f1f5f9]">
               {loans.map((l) => {
-                const repaid = l.principal - l.outstanding
+                // Interest can push a balance above what was borrowed; that is
+                // nothing repaid, not a negative repayment.
+                const repaid = Math.max(0, l.principal - l.outstanding)
+                const owesMoreThanBorrowed = l.outstanding > l.principal
                 const dl = daysLeft(l.nextPayment)
                 return (
                   <tr key={l.id} className="row-hover">
@@ -100,7 +103,12 @@ export function LoansSection() {
                     <td className="td">
                       <div className="flex items-center gap-2">
                         <Progress value={repaid} max={l.principal} color="#10b981" height={7} />
-                        <span className="text-[11px] font-bold text-slate-400 w-9 text-right">{pct(repaid, l.principal)}%</span>
+                        <span
+                          className="text-[11px] font-bold text-slate-400 w-9 text-right"
+                          title={owesMoreThanBorrowed ? 'The balance is above the original principal — interest or further drawdowns' : undefined}
+                        >
+                          {owesMoreThanBorrowed ? '—' : `${pct(repaid, l.principal)}%`}
+                        </span>
                       </div>
                     </td>
                     <td className="td"><Badge tone={statusTone(l.status)}>{l.status}</Badge></td>

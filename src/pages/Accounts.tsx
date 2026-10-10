@@ -15,7 +15,7 @@ import { round2 } from '@/lib/ledger'
 import { AlertTriangle, Check } from 'lucide-react'
 import { accountLabel } from '@/lib/accounting'
 import { TODAY, fmtDate, money } from '@/lib/format'
-import { accountTotals, inMonth, totals as monthTotals } from '@/lib/selectors'
+import { accountTotals, inMonth, loanDebt, netPosition, totals as monthTotals } from '@/lib/selectors'
 import type { Account, AccountType, Currency } from '@/types'
 
 const TYPE_LABEL: Record<AccountType, string> = {
@@ -76,6 +76,9 @@ export default function Accounts() {
   }
 
   const totals = useMemo(() => accountTotals(accounts), [accounts])
+  // Loans owed and the net position count Loan records and loan accounts
+  // together, deduped — the same figures the Dashboard and Loans & EMIs show.
+  const debt = useMemo(() => loanDebt(loans, accounts), [loans, accounts])
   const list = accounts.filter((a) => (tab === 'all' ? true : a.type === tab))
 
   const donut = [
@@ -150,9 +153,9 @@ export default function Accounts() {
           footer={<span className="text-slate-400">{accounts.filter((a) => a.type === 'cash').length} wallets</span>} />
         <StatCard label="Card Debt" value={money(totals.card)} icon={<CreditCard size={20} />} tint="#8b5cf6"
           footer={<span className="text-slate-400">{accounts.filter((a) => a.type === 'card').length} cards</span>} />
-        <StatCard label="Loans Owed" value={money(totals.loan)} icon={<Banknote size={20} />} tint="#ef4444"
-          footer={<span className="text-rose-500 font-semibold">↑ {accounts.filter((a) => a.type === 'loan').length} active loans</span>} />
-        <StatCard label="Net Position" value={money(totals.net)} icon={<PieChart size={20} />} tint="#f59e0b"
+        <StatCard label="Loans Owed" value={money(debt.total)} icon={<Banknote size={20} />} tint="#ef4444"
+          footer={<span className="text-rose-500 font-semibold">↑ {debt.count} active loan{debt.count === 1 ? '' : 's'}</span>} />
+        <StatCard label="Net Position" value={money(netPosition(accounts, loans))} icon={<PieChart size={20} />} tint="#f59e0b"
           footer={<span className="text-slate-400">Bank + cash, less cards and loans</span>} />
       </div>
 

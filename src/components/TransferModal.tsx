@@ -153,15 +153,18 @@ export function TransferModal({
     // Taking money off a card is borrowing, not moving your own money about:
     // a cash advance into an account, or a balance transfer onto another card.
     const cashAdvance = mode === 'move' && fromIsCard && dest?.type !== 'card'
+    // Settling a card from bank or cash is a card payment whichever tab it was
+    // reached from, so it lands in the ledger the same way either way.
+    const paysCard = (mode === 'move' && !fromIsCard && dest?.type === 'card') || mode === 'card'
     const kind: TransferKind =
       mode === 'borrow' || cashAdvance ? 'drawdown'
-        : mode === 'card' ? 'card_payment'
+        : paysCard ? 'card_payment'
           : mode === 'loan' ? 'repayment'
             : 'transfer'
     const purpose: TransferPurpose =
       mode === 'borrow' ? 'Loan drawdown'
         : cashAdvance ? 'Cash withdrawal'
-          : mode === 'card' ? 'Credit card payment'
+          : paysCard ? 'Credit card payment'
             : mode === 'loan' ? 'Loan payment'
               : familyMove ? 'Family transfer' : 'Other'
 
@@ -189,7 +192,7 @@ export function TransferModal({
       ? // Off a card the money can land in an account (a cash advance) or on
         // another card (a balance transfer). Off an asset account it stays
         // between accounts — paying a card has its own tab.
-        accounts.filter((a) => a.id !== fromId && (isAssetAccount(a.type) || (fromIsCard && a.type === 'card')))
+        accounts.filter((a) => a.id !== fromId && (isAssetAccount(a.type) || a.type === 'card'))
       : mode === 'card'
         ? cards
         : mode === 'borrow'
@@ -332,7 +335,8 @@ export function TransferModal({
             ) : (
               <>
                 {money(total, from.currency)} leaves <b>{from.name}</b>
-                {from.owner ? ` (${from.owner})` : ''} and {mode === 'loan' ? 'pays' : mode === 'card' ? 'pays down' : 'arrives in'}{' '}
+                {from.owner ? ` (${from.owner})` : ''} and{' '}
+                {mode === 'loan' ? 'pays' : mode === 'card' || accounts.find((a) => a.id === toId)?.type === 'card' ? 'pays down' : 'arrives in'}{' '}
                 <b>{destLabel}</b>
                 {mode === 'loan' && cost > 0 ? ` — ${money(cost, from.currency)} of it is interest/fees (an expense)` : ''}. One linked record;
                 not income or expense{mode === 'loan' && cost > 0 ? ' apart from the interest/fees' : ''}.

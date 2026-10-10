@@ -19,6 +19,7 @@ const Notes = lazy(() => import('@/pages/Notes'))
 const PriceTracker = lazy(() => import('@/pages/PriceTracker'))
 const Shopping = lazy(() => import('@/pages/Shopping'))
 const Goals = lazy(() => import('@/pages/Goals'))
+const VisionBoard = lazy(() => import('@/pages/VisionBoard'))
 const Reports = lazy(() => import('@/pages/Reports'))
 const ProfitLoss = lazy(() => import('@/pages/ProfitLoss'))
 const Forecast = lazy(() => import('@/pages/Forecast'))
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="price-tracker" element={<PriceTracker />} />
             <Route path="shopping" element={<Shopping />} />
             <Route path="goals" element={<Goals />} />
+            <Route path="vision-board" element={<VisionBoard />} />
             <Route path="reports" element={<Reports />} />
             <Route path="profit-loss" element={<ProfitLoss />} />
             <Route path="forecast" element={<Forecast />} />

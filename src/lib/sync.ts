@@ -1,5 +1,5 @@
 import { db } from '@/lib/supabase'
-import { MAPPERS, TABLES, V2_COLUMNS, V2_TABLES, V3_COLUMNS, V3_TABLES, V4_COLUMNS, settingsMapper, type Collection } from '@/lib/mappers'
+import { MAPPERS, TABLES, V2_COLUMNS, V2_TABLES, V3_COLUMNS, V3_TABLES, V4_COLUMNS, V5_TABLES, settingsMapper, type Collection } from '@/lib/mappers'
 import type { HouseholdMember, Settings, VerificationAttempt } from '@/types'
 import { SETTINGS } from '@/data/seed'
 
@@ -31,6 +31,10 @@ export interface RemoteData {
   budgetItems: any[]
   verificationQuestions: any[]
   incomeSources: any[]
+  dreams: any[]
+  visionWords: any[]
+  scheduleBlocks: any[]
+  activityLog: any[]
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +48,7 @@ export interface SessionContext {
   schemaV2: boolean
   schemaV3: boolean
   schemaV4: boolean
+  schemaV5: boolean
   ownerId: string
   /** Set when the signed-in user is a household member rather than the owner. */
   membership: HouseholdMember | null
@@ -51,12 +56,13 @@ export interface SessionContext {
   inactive: boolean
 }
 
-const ctx: { schemaV2: boolean; schemaV3: boolean; schemaV4: boolean; ownerId: string | null } =
-  { schemaV2: false, schemaV3: false, schemaV4: false, ownerId: null }
+const ctx: { schemaV2: boolean; schemaV3: boolean; schemaV4: boolean; schemaV5: boolean; ownerId: string | null } =
+  { schemaV2: false, schemaV3: false, schemaV4: false, schemaV5: false, ownerId: null }
 
 export const isSchemaV2 = () => ctx.schemaV2
 export const isSchemaV3 = () => ctx.schemaV3
 export const isSchemaV4 = () => ctx.schemaV4
+export const isSchemaV5 = () => ctx.schemaV5
 
 /** Work out the schema version and whose data the signed-in user is looking at. */
 export async function resolveSession(userId: string): Promise<SessionContext> {
@@ -67,6 +73,7 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
   let schemaV2 = v >= 15
   let schemaV3 = v >= 16
   let schemaV4 = v >= 18
+  let schemaV5 = v >= 19
   // The version row can be hidden (row level security with no policy, or a stale API
   // cache). A second, independent probe: if a v2/v3/v4-only table/column answers, the migration ran.
   if (!schemaV2) {
@@ -81,15 +88,20 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
     const probe = await client.from('goals').select('currency').limit(1)
     schemaV4 = !probe.error
   }
+  if (!schemaV5) {
+    const probe = await client.from('dreams').select('id').limit(1)
+    schemaV5 = !probe.error
+  }
   ctx.schemaV2 = schemaV2
   ctx.schemaV3 = schemaV3
   ctx.schemaV4 = schemaV4
+  ctx.schemaV5 = schemaV5
   ctx.ownerId = userId
 
-  if (!schemaV2) return { schemaV2, schemaV3, schemaV4, ownerId: userId, membership: null, inactive: false }
+  if (!schemaV2) return { schemaV2, schemaV3, schemaV4, schemaV5, ownerId: userId, membership: null, inactive: false }
 
   const mem = await client.from('household_members').select('*').eq('member_id', userId).maybeSingle()
-  if (mem.error || !mem.data) return { schemaV2, schemaV3, schemaV4, ownerId: userId, membership: null, inactive: false }
+  if (mem.error || !mem.data) return { schemaV2, schemaV3, schemaV4, schemaV5, ownerId: userId, membership: null, inactive: false }
 
   const m = mem.data
   ctx.ownerId = m.owner_id
@@ -97,6 +109,7 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
     schemaV2,
     schemaV3,
     schemaV4,
+    schemaV5,
     ownerId: m.owner_id,
     inactive: !m.active,
     membership: {
@@ -122,7 +135,12 @@ function shapeRow(collection: Collection, row: Record<string, any>) {
 }
 
 const activeCollections = () =>
-  COLLECTIONS.filter((c) => (ctx.schemaV2 || !V2_TABLES.includes(c)) && (ctx.schemaV3 || !V3_TABLES.includes(c)))
+  COLLECTIONS.filter(
+    (c) =>
+      (ctx.schemaV2 || !V2_TABLES.includes(c)) &&
+      (ctx.schemaV3 || !V3_TABLES.includes(c)) &&
+      (ctx.schemaV5 || !V5_TABLES.includes(c)),
+  )
 
 /** Read every table the signed-in user may see. RLS scopes the rows. */
 export async function pullAll(): Promise<RemoteData> {
@@ -154,7 +172,9 @@ export async function pullAll(): Promise<RemoteData> {
 const owner = (fallback: string) => ctx.ownerId ?? fallback
 
 const tableMissing = (collection: Collection) =>
-  (!ctx.schemaV2 && V2_TABLES.includes(collection)) || (!ctx.schemaV3 && V3_TABLES.includes(collection))
+  (!ctx.schemaV2 && V2_TABLES.includes(collection)) ||
+  (!ctx.schemaV3 && V3_TABLES.includes(collection)) ||
+  (!ctx.schemaV5 && V5_TABLES.includes(collection))
 
 export async function upsertRow(collection: Collection, item: any, userId: string) {
   if (tableMissing(collection)) return // table does not exist yet

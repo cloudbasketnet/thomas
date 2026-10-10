@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type {
-  Account, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem, Category, Doc,
-  EmployeeMessage, Goal, GoldRate, HouseholdMember, IncomeSource, ItemAlias, Loan, Note, Person, PriceWatch, Receipt,
-  Settings, Subcategory, Transaction, Transfer, VerificationQuestion,
+  Account, ActivityEntry, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem,
+  Category, Doc, Dream, EmployeeMessage, Goal, GoldRate, HouseholdMember, IncomeSource, ItemAlias, Loan, Note, Person,
+  PriceWatch, Receipt, ScheduleBlock, Settings, Subcategory, Transaction, Transfer, VerificationQuestion, VisionWord,
 } from '@/types'
 import {
-  ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, SETTINGS, TRANSACTIONS,
+  ACCOUNTS, BILLS, BUDGETS, DOCUMENTS, DREAMS, GOALS, LOANS, NOTES, PEOPLE, PRICE_WATCH, SCHEDULE_BLOCKS,
+  SETTINGS, TRANSACTIONS, VISION_WORDS,
 } from '@/data/seed'
 import { convert, setBaseCurrency, setFxRates, uid } from '@/lib/format'
 import { freezeOpenings, withDerivedBalances, withDerivedLoans, transferPrincipal, round2 } from '@/lib/ledger'
@@ -51,6 +52,10 @@ interface State {
   assetValuations: AssetValuation[]
   goldRates: GoldRate[]
   budgetItems: BudgetItem[]
+  dreams: Dream[]
+  visionWords: VisionWord[]
+  scheduleBlocks: ScheduleBlock[]
+  activityLog: ActivityEntry[]
   verificationQuestions: VerificationQuestion[]
   incomeSources: IncomeSource[]
   /** Chat with AI employees — kept in this browser only, not synced to the cloud (see AIEmployees.tsx). */
@@ -60,6 +65,7 @@ interface State {
   schemaV2: boolean
   schemaV3: boolean
   schemaV4: boolean
+  schemaV5: boolean
   ownerId: string | null
   membership: HouseholdMember | null
   setContext: (c: SessionContext) => void
@@ -171,6 +177,17 @@ interface State {
   removeNote: (id: string) => void
   toggleNote: (id: string) => void
 
+  addDream: (d: Omit<Dream, 'id'>) => void
+  updateDream: (id: string, patch: Partial<Dream>) => void
+  removeDream: (id: string) => void
+  addVisionWord: (w: Omit<VisionWord, 'id'>) => void
+  updateVisionWord: (id: string, patch: Partial<VisionWord>) => void
+  removeVisionWord: (id: string) => void
+  addScheduleBlock: (b: Omit<ScheduleBlock, 'id'>) => void
+  updateScheduleBlock: (id: string, patch: Partial<ScheduleBlock>) => void
+  removeScheduleBlock: (id: string) => void
+  logActivity: (a: Omit<ActivityEntry, 'id'>) => void
+  removeActivity: (id: string) => void
   addGoal: (g: Omit<Goal, 'id'>) => void
   updateGoal: (id: string, patch: Partial<Goal>) => void
   removeGoal: (id: string) => void
@@ -212,6 +229,10 @@ const seedState = () => ({
   documents: DOCUMENTS,
   notes: NOTES,
   goals: GOALS,
+  dreams: DREAMS,
+  visionWords: VISION_WORDS,
+  scheduleBlocks: SCHEDULE_BLOCKS,
+  activityLog: [],
   priceWatch: PRICE_WATCH,
   categories: [],
   subcategories: [],
@@ -355,9 +376,10 @@ export const useStore = create<State>()(
       schemaV2: false,
       schemaV3: false,
       schemaV4: false,
+      schemaV5: false,
       ownerId: null,
       membership: null,
-      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, ownerId: c.ownerId, membership: c.membership }),
+      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, ownerId: c.ownerId, membership: c.membership }),
 
       setSession: (userId, userEmail) => set({ userId, userEmail }),
       hydrate: (data) => {
@@ -396,6 +418,10 @@ export const useStore = create<State>()(
           documents: data.documents,
           notes: data.notes,
           goals: data.goals,
+          dreams: data.dreams ?? [],
+          visionWords: data.visionWords ?? [],
+          scheduleBlocks: data.scheduleBlocks ?? [],
+          activityLog: data.activityLog ?? [],
           priceWatch: data.priceWatch,
           categories: data.categories ?? [],
           subcategories: data.subcategories ?? [],
@@ -832,6 +858,49 @@ export const useStore = create<State>()(
       },
 
       // ----------------------------------------------------------------- goals
+      addDream: (d) => {
+        const item = { ...d, id: uid('dr') }
+        set({ dreams: [...get().dreams, item] })
+        push('dreams', item)
+      },
+      updateDream: (id, patch) => set({ dreams: patchList(get().dreams, id, patch, 'dreams') }),
+      removeDream: (id) => {
+        set({ dreams: get().dreams.filter((d) => d.id !== id) })
+        drop('dreams', id)
+      },
+
+      addVisionWord: (w) => {
+        const item = { ...w, id: uid('vw') }
+        set({ visionWords: [...get().visionWords, item] })
+        push('visionWords', item)
+      },
+      updateVisionWord: (id, patch) => set({ visionWords: patchList(get().visionWords, id, patch, 'visionWords') }),
+      removeVisionWord: (id) => {
+        set({ visionWords: get().visionWords.filter((w) => w.id !== id) })
+        drop('visionWords', id)
+      },
+
+      addScheduleBlock: (b) => {
+        const item = { ...b, id: uid('sb') }
+        set({ scheduleBlocks: [...get().scheduleBlocks, item] })
+        push('scheduleBlocks', item)
+      },
+      updateScheduleBlock: (id, patch) => set({ scheduleBlocks: patchList(get().scheduleBlocks, id, patch, 'scheduleBlocks') }),
+      removeScheduleBlock: (id) => {
+        set({ scheduleBlocks: get().scheduleBlocks.filter((b) => b.id !== id) })
+        drop('scheduleBlocks', id)
+      },
+
+      logActivity: (a) => {
+        const item = { ...a, id: uid('ac') }
+        set({ activityLog: [...get().activityLog, item] })
+        push('activityLog', item)
+      },
+      removeActivity: (id) => {
+        set({ activityLog: get().activityLog.filter((a) => a.id !== id) })
+        drop('activityLog', id)
+      },
+
       addGoal: (g) => {
         const item = { ...g, id: uid('g') }
         set({ goals: [...get().goals, item] })
@@ -934,10 +1003,10 @@ export const useStore = create<State>()(
       partialize: (s) => {
         const {
           userId, userEmail, syncing, syncError, lastSynced, analysing, analysisError,
-          schemaV2, schemaV3, schemaV4, ownerId, membership, ...data
+          schemaV2, schemaV3, schemaV4, schemaV5, ownerId, membership, ...data
         } = s
         void userId; void userEmail; void syncing; void syncError; void lastSynced
-        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void ownerId; void membership
+        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void ownerId; void membership
         return data
       },
     },

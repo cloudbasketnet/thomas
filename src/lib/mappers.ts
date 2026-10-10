@@ -1,7 +1,7 @@
 import type {
-  Account, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem, Category, Doc,
-  Goal, GoldRate, IncomeSource, ItemAlias, Loan, Note, Person, PriceWatch, Receipt, Settings, Subcategory, Transaction,
-  Transfer, VerificationQuestion,
+  Account, ActivityEntry, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem,
+  Category, Doc, Dream, Goal, GoldRate, IncomeSource, ItemAlias, Loan, Note, Person, PriceWatch, Receipt,
+  ScheduleBlock, Settings, Subcategory, Transaction, Transfer, VerificationQuestion, VisionWord,
 } from '@/types'
 
 /** Every syncable collection in the store, and the table that backs it. */
@@ -29,6 +29,10 @@ export const TABLES = {
   budgetItems: 'budget_items',
   verificationQuestions: 'verification_questions',
   incomeSources: 'income_sources',
+  dreams: 'dreams',
+  visionWords: 'vision_words',
+  scheduleBlocks: 'schedule_blocks',
+  activityLog: 'activity_log',
 } as const
 
 /** Tables that only exist once migration 0015 has been run. */
@@ -36,6 +40,9 @@ export const V2_TABLES: Collection[] = ['receipts', 'itemAliases', 'assets', 'as
 
 /** Tables that only exist once migration 0016 has been run. */
 export const V3_TABLES: Collection[] = ['verificationQuestions', 'incomeSources']
+
+/** Tables that only exist once migration 0019 has been run — the vision board. */
+export const V5_TABLES: Collection[] = ['dreams', 'visionWords', 'scheduleBlocks', 'activityLog']
 
 /** Columns added to older tables by 0018 — stripped from writes until it has run. */
 export const V4_COLUMNS: Partial<Record<Collection, string[]>> = {
@@ -241,6 +248,40 @@ export const MAPPERS: {
     from: (r): Goal => ({
       id: r.id, name: r.name, target: num(r.target), saved: num(r.saved), currency: r.currency ?? 'AED', deadline: r.deadline,
       icon: r.icon, color: r.color,
+    }),
+  },
+
+  dreams: {
+    to: (d: Dream) => ({
+      id: d.id, title: d.title, note: d.note, image: d.image ?? null, emoji: d.emoji, color: d.color,
+      progress: d.progress, target_date: d.targetDate ?? null, order: d.order,
+    }),
+    from: (r): Dream => ({
+      id: r.id, title: r.title, note: r.note ?? '', image: r.image ?? undefined, emoji: r.emoji ?? '⭐',
+      color: r.color ?? '#2563eb', progress: num(r.progress), targetDate: r.target_date ?? undefined, order: num(r.order),
+    }),
+  },
+
+  visionWords: {
+    to: (w: VisionWord) => ({ id: w.id, word: w.word, note: w.note, emoji: w.emoji, color: w.color, order: w.order }),
+    from: (r): VisionWord => ({
+      id: r.id, word: r.word, note: r.note ?? '', emoji: r.emoji ?? '✨', color: r.color ?? '#f59e0b', order: num(r.order),
+    }),
+  },
+
+  scheduleBlocks: {
+    // start/end are reserved-ish words in enough places that the columns are
+    // start_at/end_at; the domain object keeps the shorter names.
+    to: (b: ScheduleBlock) => ({ id: b.id, label: b.label, kind: b.kind, start_at: b.start, end_at: b.end, order: b.order }),
+    from: (r): ScheduleBlock => ({
+      id: r.id, label: r.label, kind: r.kind ?? 'other', start: r.start_at ?? '00:00', end: r.end_at ?? '00:00', order: num(r.order),
+    }),
+  },
+
+  activityLog: {
+    to: (a: ActivityEntry) => ({ id: a.id, date: a.date, kind: a.kind, minutes: a.minutes, note: a.note ?? null }),
+    from: (r): ActivityEntry => ({
+      id: r.id, date: r.date, kind: r.kind ?? 'other', minutes: num(r.minutes), note: r.note ?? undefined,
     }),
   },
 

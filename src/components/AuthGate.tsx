@@ -21,6 +21,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const schemaV2 = useStore((s) => s.schemaV2)
   const schemaV3 = useStore((s) => s.schemaV3)
   const schemaV4 = useStore((s) => s.schemaV4)
+  const schemaV5 = useStore((s) => s.schemaV5)
   const [notice, setNotice] = useState<string | null>(null)
   const clearLocalData = useStore((s) => s.clearLocalData)
   const [phase, setPhase] = useState<Phase>(hasSupabase ? 'checking' : 'ready')
@@ -189,7 +190,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
        * Phones get the full width; from sm the stack hugs the right edge.
        */}
       <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
-        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} />
+        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} />
         {error && (
           <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -217,24 +218,28 @@ const NOTICE_KEY = 'cb_migration_notice_collapsed'
  * together — a database that is up to date shows nothing at all.
  */
 function MigrationNotice({
-  supabase, schemaV2, schemaV3, schemaV4,
+  supabase, schemaV2, schemaV3, schemaV4, schemaV5,
 }: {
   supabase: boolean
   schemaV2: boolean
   schemaV3: boolean
   schemaV4: boolean
+  schemaV5: boolean
 }) {
   const [open, setOpen] = useState(() => sessionStorage.getItem(NOTICE_KEY) !== '1')
 
-  if (!supabase || schemaV4) return null
+  if (!supabase || (schemaV4 && schemaV5)) return null
 
   const pending: { file: string; adds: string }[] = []
   if (!schemaV2) pending.push({ file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, smart budget, family users' })
   if (!schemaV3) pending.push({ file: '0016_security_verification.sql', adds: 'login-lock questions, instalment extras, planned income' })
   // 0017 carries no version stamp of its own, so it is listed whenever the
   // database is behind 0018. Every migration is safe to re-run.
-  pending.push({ file: '0017_savings_investment_accounts.sql', adds: 'savings and investment account types' })
-  pending.push({ file: '0018_goal_currency.sql', adds: "a savings goal's own currency" })
+  if (!schemaV4) {
+    pending.push({ file: '0017_savings_investment_accounts.sql', adds: 'savings and investment account types' })
+    pending.push({ file: '0018_goal_currency.sql', adds: "a savings goal's own currency" })
+  }
+  if (!schemaV5) pending.push({ file: '0019_vision_board.sql', adds: 'dreams, words, daily schedule and the activity log' })
 
   if (!open)
     return (

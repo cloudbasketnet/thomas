@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   BarChart3, Bot, CalendarDays, ChevronLeft, ChevronRight, CreditCard, FileText, FolderTree, Gauge, Gem, Home,
   Landmark, LayoutDashboard, Scale, MinusCircle, PiggyBank, PlusCircle, Repeat,
-  Settings as SettingsIcon, ShoppingBag, ShoppingCart, Sparkles, StickyNote, Tags, TrendingUp, Users, Wallet,
+  Settings as SettingsIcon, ShoppingBag, ShoppingCart, Sparkles, StickyNote, Tags, Target, TrendingUp, Users, Wallet,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
 import { docStatus } from '@/lib/selectors'
@@ -36,6 +36,7 @@ const NAV = [
   { to: '/price-tracker', label: 'Price Tracker', icon: Tags },
   { to: '/shopping', label: 'Shopping Assistant', icon: ShoppingCart },
   { to: '/goals', label: 'Savings Goals', icon: PiggyBank },
+  { to: '/vision-board', label: 'Vision Board', icon: Target },
   { to: '/categories', label: 'Categories', icon: FolderTree },
   { to: '/reports', label: 'Reports', icon: BarChart3 },
   { to: '/calendar', label: 'Calendar', icon: CalendarDays },

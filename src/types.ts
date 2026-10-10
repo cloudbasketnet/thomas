@@ -646,3 +646,54 @@ export interface HouseholdMember {
   sections: string[]
   accountIds?: string[] | null
 }
+
+// ---------------------------------------------------------------------------
+// Vision board — the life side of the app: what you are working towards, the
+// shape of your day, and where the hours actually went.
+// ---------------------------------------------------------------------------
+
+export type ActivityKind = 'gym' | 'sleep' | 'rest' | 'work' | 'personal' | 'family' | 'other'
+
+/** Something you are working towards, with a picture of it. */
+export interface Dream {
+  id: string
+  title: string
+  note: string
+  /** A photo, as a data URL or an https link. With none, the emoji stands in for it. */
+  image?: string
+  emoji: string
+  color: string
+  /** 0-100, set by hand — a dream is not always something you can measure. */
+  progress: number
+  targetDate?: string
+  order: number
+}
+
+/** A word to keep in front of you. */
+export interface VisionWord {
+  id: string
+  word: string
+  note: string
+  emoji: string
+  color: string
+  order: number
+}
+
+/** One recurring block of the day. `start`/`end` are "HH:MM"; end may wrap past midnight. */
+export interface ScheduleBlock {
+  id: string
+  label: string
+  kind: ActivityKind
+  start: string
+  end: string
+  order: number
+}
+
+/** Time actually spent on a given day. Several entries of the same kind add up. */
+export interface ActivityEntry {
+  id: string
+  date: string
+  kind: ActivityKind
+  minutes: number
+  note?: string
+}

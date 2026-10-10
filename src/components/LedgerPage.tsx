@@ -179,7 +179,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
 
       {tab === 'overview' && (
         <>
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
             <Card className="lg:col-span-6 xl:col-span-5">
               <CardHead title={isIncome ? 'Monthly Income Trend' : 'Monthly Expense Trend'} right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
               <div className="px-3 pb-4">
@@ -213,7 +213,7 @@ export function LedgerPage({ type }: { type: TxnType }) {
             </Card>
           </div>
 
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
             <Card className="lg:col-span-8">
               <CardHead
                 title={isIncome ? 'Recent Income Transactions' : 'Expenses by Receipt'}

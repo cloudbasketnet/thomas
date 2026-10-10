@@ -363,7 +363,7 @@ export function DuePaymentsCard() {
   const { loans, bills, notes } = useStore()
   const ids = useTxnIds()
   const rows = useMemo(
-    () => duePayments(loans, bills, notes, (id) => ids.has(id), 60).slice(0, 6),
+    () => duePayments(loans, bills, notes, (id) => ids.has(id), 60).slice(0, 5),
     [loans, bills, notes, ids],
   )
 
@@ -432,7 +432,7 @@ export function DuePaymentsCard() {
 
 export function ExpenseCategoriesCard() {
   const transactions = useStore((s) => s.transactions)
-  const rows = useMemo(() => byCategory(transactions, 'expense').slice(0, 6), [transactions])
+  const rows = useMemo(() => byCategory(transactions, 'expense').slice(0, 5), [transactions])
   const total = rows.reduce((n, r) => n + r.value, 0)
 
   return (
@@ -550,7 +550,7 @@ export function SavingsGoalCard({ className = 'lg:col-span-6 xl:col-span-4' }: {
 export function RecentTransactionsCard() {
   const { transactions, accounts } = useStore()
   const rows = useMemo(
-    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6),
+    () => [...transactions].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5),
     [transactions],
   )
   const nameOf = (id: string) => accounts.find((a) => a.id === id)?.name ?? '—'

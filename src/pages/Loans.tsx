@@ -258,7 +258,7 @@ export function LoansSection() {
         </Card>
       )}
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHead title="Upcoming Payments" sub="Next 3 months" />
           <div className="px-5 pb-5 space-y-3">

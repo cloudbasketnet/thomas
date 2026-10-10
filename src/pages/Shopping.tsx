@@ -96,7 +96,7 @@ export default function Shopping() {
         </div>
       )}
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <div className="lg:col-span-8 space-y-4">
           <Card>
             <CardHead title="Find an item you have bought" sub="Every purchased item is searchable — latest price, date, brand, pack size and supermarket" />

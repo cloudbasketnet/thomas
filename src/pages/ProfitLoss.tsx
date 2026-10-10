@@ -228,7 +228,7 @@ export default function ProfitLoss() {
         <StatCard label={cur.net >= 0 ? 'Net Surplus' : 'Net Deficit'} value={money(cur.net)} icon={<Scale size={20} />} tint={cur.net >= 0 ? '#3b82f6' : '#ef4444'} footer={<Delta c={net} goodWhenUp />} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-7">
           <CardHead title="Monthly trend" sub="Last 12 months, same filters" />
           <div className="px-3 pb-4"><IncomeExpenseBars data={trend} height={250} /></div>
@@ -252,7 +252,7 @@ export default function ProfitLoss() {
         </Card>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHead title="Income by source" sub="Click a line to see the transactions behind it" />
           <div className="px-5 pb-5">

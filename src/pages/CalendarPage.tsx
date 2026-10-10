@@ -72,7 +72,7 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-8">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <h3 className="card-title">{MONTH_NAMES[cursor.month]} {cursor.year}</h3>

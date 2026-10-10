@@ -177,7 +177,7 @@ export function SmartBudget() {
         <Table rows={plan} empty="Nothing planned for this month yet — add a loan, bill, payment schedule or an item of your own." />
       </Card>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
         <Card>
           <CardHead title="Upcoming payments & renewals" sub="Next 30 days" />
           <div className="px-5 pb-5 space-y-2">

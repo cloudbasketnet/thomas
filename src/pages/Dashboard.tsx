@@ -171,19 +171,19 @@ export default function Dashboard() {
       </div>
 
       {/* Daily spending + the account you watch most */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <DailyExpensesCard />
         <FavouriteBankCard />
       </div>
 
       {/* Card balance + everything with a date on it */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <CreditCardCard />
         <DuePaymentsCard />
       </div>
 
       {/* Charts row */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Income vs Expenses" right={<span className="chip bg-slate-100 text-slate-500">This Year</span>} />
           {/* Side by side only once the card is wide (xl); below that the totals
@@ -256,19 +256,19 @@ export default function Dashboard() {
       </div>
 
       {/* Where the money is going, and where it is heading */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <CashFlowCard />
         <ExpenseCategoriesCard />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <RecentTransactionsCard />
         <ActionCentreCard />
         <InsightCard />
       </div>
 
       {/* Loans + converter + documents */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-7 xl:col-span-5">
           <CardHead title="Loan Tracker" right={<ViewAll to="/loans" />} />
           <div className="overflow-x-auto scroll-thin">
@@ -333,7 +333,7 @@ export default function Dashboard() {
                 {documents.length === 0 && (
                   <tr><td className="td text-center text-slate-400 py-8" colSpan={4}>No documents tracked yet.</td></tr>
                 )}
-                {documents.slice(0, 6).map((d) => {
+                {documents.slice(0, 4).map((d) => {
                   const st = docStatus(d.expiry)
                   const dl = daysLeft(d.expiry)
                   return (
@@ -367,7 +367,7 @@ export default function Dashboard() {
       </div>
 
       {/* Notes + plan + goals */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-6 xl:col-span-5">
           <CardHead title="Notes & Follow Up" right={<ViewAll to="/notes" />} />
           <div className="px-5 pb-3 flex items-center gap-1.5 flex-wrap">

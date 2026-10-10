@@ -85,7 +85,7 @@ export default function Reports() {
             <div className="px-3 pb-4"><TrendLine data={series} height={300} /></div>
           </Card>
 
-          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2 items-start">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
             <Card>
               <CardHead title="Month-by-Month Breakdown" />
               <div className="overflow-x-auto scroll-thin">
@@ -151,7 +151,7 @@ export default function Reports() {
       )}
 
       {tab === 'category' && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
           <Card className="lg:col-span-6 xl:col-span-4">
             <CardHead title="Expenses by Category" />
             <div className="px-5 pb-5 flex flex-col items-center gap-4">
@@ -306,7 +306,7 @@ export default function Reports() {
       )}
 
       {tab === 'notes' && (
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
           <Card className="lg:col-span-8">
             <CardHead title="Notes & Follow-up Report" />
             <div className="overflow-x-auto scroll-thin">
@@ -441,7 +441,7 @@ function TagsReport() {
           footer={<span className="text-slate-400">{tags.length - used.length} with no spending</span>} />
       </div>
 
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12 items-start">
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-4">
           <CardHead title="Spending by Tag" sub={range.label} />
           <div className="px-5 pb-5 flex flex-col items-center gap-4">

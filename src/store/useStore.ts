@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import type {
   Account, ActivityEntry, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem,
   Category, Doc, Dream, EmployeeMessage, Goal, GoldRate, HouseholdMember, IncomeSource, ItemAlias, Loan, Note, Person,
@@ -66,6 +66,7 @@ interface State {
   schemaV3: boolean
   schemaV4: boolean
   schemaV5: boolean
+  schemaV6: boolean
   ownerId: string | null
   membership: HouseholdMember | null
   setContext: (c: SessionContext) => void
@@ -83,6 +84,8 @@ interface State {
   userEmail: string | null
   syncing: boolean
   syncError: string | null
+  /** This device's storage is full — see the persist options below. */
+  storageFull: boolean
   lastSynced: string | null
 
   setSession: (userId: string | null, email: string | null) => void
@@ -371,15 +374,17 @@ export const useStore = create<State>()(
       userEmail: null,
       syncing: false,
       syncError: null,
+      storageFull: false,
       lastSynced: null,
 
       schemaV2: false,
       schemaV3: false,
       schemaV4: false,
       schemaV5: false,
+      schemaV6: false,
       ownerId: null,
       membership: null,
-      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, ownerId: c.ownerId, membership: c.membership }),
+      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, schemaV6: c.schemaV6, ownerId: c.ownerId, membership: c.membership }),
 
       setSession: (userId, userEmail) => set({ userId, userEmail }),
       hydrate: (data) => {
@@ -987,6 +992,38 @@ export const useStore = create<State>()(
     }),
     {
       name: 'thomas-finance-v1',
+      /*
+       * Browser storage is finite — Safari gives an origin a few megabytes for
+       * localStorage — and the whole store goes into it. When a write does not
+       * fit, the throw used to escape through whatever triggered it, and the
+       * sign-in path caught it and reported "Cloud sync unavailable: the quota
+       * has been exceeded", which blames the network for a local problem and
+       * sends you looking in the wrong place.
+       *
+       * The failure is caught here and named for what it is. The app keeps
+       * working from the data already in memory; what is lost is only the
+       * cache for the next reload, and anything signed in is on the server.
+       */
+      storage: createJSONStorage(() => ({
+        getItem: (k) => {
+          try { return localStorage.getItem(k) } catch { return null }
+        },
+        setItem: (k, v) => {
+          try {
+            localStorage.setItem(k, v)
+            if (useStore.getState().storageFull) useStore.setState({ storageFull: false })
+          } catch (e) {
+            const quota = e instanceof DOMException &&
+              (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)
+            if (quota) {
+              if (!useStore.getState().storageFull) useStore.setState({ storageFull: true })
+            } else throw e
+          }
+        },
+        removeItem: (k) => {
+          try { localStorage.removeItem(k) } catch { /* nothing to undo */ }
+        },
+      })),
       onRehydrateStorage: () => (state) => {
         if (!state) return
         setBaseCurrency(state.settings.baseCurrency)
@@ -1003,10 +1040,10 @@ export const useStore = create<State>()(
       partialize: (s) => {
         const {
           userId, userEmail, syncing, syncError, lastSynced, analysing, analysisError,
-          schemaV2, schemaV3, schemaV4, schemaV5, ownerId, membership, ...data
+          schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, ownerId, membership, ...data
         } = s
         void userId; void userEmail; void syncing; void syncError; void lastSynced
-        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void ownerId; void membership
+        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void schemaV6; void ownerId; void membership
         return data
       },
     },

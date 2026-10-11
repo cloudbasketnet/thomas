@@ -22,6 +22,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const schemaV3 = useStore((s) => s.schemaV3)
   const schemaV4 = useStore((s) => s.schemaV4)
   const schemaV5 = useStore((s) => s.schemaV5)
+  const schemaV6 = useStore((s) => s.schemaV6)
+  const storageFull = useStore((s) => s.storageFull)
   const [notice, setNotice] = useState<string | null>(null)
   const clearLocalData = useStore((s) => s.clearLocalData)
   const [phase, setPhase] = useState<Phase>(hasSupabase ? 'checking' : 'ready')
@@ -190,7 +192,19 @@ export function AuthGate({ children }: { children: ReactNode }) {
        * Phones get the full width; from sm the stack hugs the right edge.
        */}
       <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
-        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} />
+        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} schemaV6={schemaV6} />
+        {storageFull && (
+          <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
+            <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-[12.5px] font-bold text-amber-900">This device is out of storage</p>
+              <p className="text-[11.5px] text-amber-800 mt-0.5">
+                Everything still works and anything signed in is saved on the server — but this browser cannot keep a
+                copy for the next time you open the app. Large photos are the usual cause.
+              </p>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -218,17 +232,18 @@ const NOTICE_KEY = 'cb_migration_notice_collapsed'
  * together — a database that is up to date shows nothing at all.
  */
 function MigrationNotice({
-  supabase, schemaV2, schemaV3, schemaV4, schemaV5,
+  supabase, schemaV2, schemaV3, schemaV4, schemaV5, schemaV6,
 }: {
   supabase: boolean
   schemaV2: boolean
   schemaV3: boolean
   schemaV4: boolean
   schemaV5: boolean
+  schemaV6: boolean
 }) {
   const [open, setOpen] = useState(() => sessionStorage.getItem(NOTICE_KEY) !== '1')
 
-  if (!supabase || (schemaV4 && schemaV5)) return null
+  if (!supabase || (schemaV4 && schemaV5 && schemaV6)) return null
 
   const pending: { file: string; adds: string }[] = []
   if (!schemaV2) pending.push({ file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, smart budget, family users' })
@@ -240,6 +255,7 @@ function MigrationNotice({
     pending.push({ file: '0018_goal_currency.sql', adds: "a savings goal's own currency" })
   }
   if (!schemaV5) pending.push({ file: '0019_vision_board.sql', adds: 'dreams, words, daily schedule and the activity log' })
+  if (!schemaV6) pending.push({ file: '0020_bill_currency.sql', adds: "a bill's own currency" })
 
   if (!open)
     return (

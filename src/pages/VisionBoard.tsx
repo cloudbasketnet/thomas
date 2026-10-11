@@ -7,6 +7,8 @@ import { Link } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
 import { Card, CardHead, Empty, PageHeader, Progress, StatCard, cx } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
+import { readFileAsDataUrl } from '@/lib/gemini'
+import { resizeImage } from '@/lib/image'
 import {
   ACTIVITY, ACTIVITY_KINDS, blockMinutes, dayAnalysis, dreamProgress, duration, monthAnalysis, sortedDreams, sortedSchedule,
 } from '@/lib/vision'
@@ -326,6 +328,7 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
   const editing = value && value !== 'new' ? value : null
   const [form, setForm] = useState({ title: '', note: '', emoji: '⭐', color: PALETTE[0], progress: 0, image: '', targetDate: '' })
   const [seeded, setSeeded] = useState<string | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
   const key = editing?.id ?? 'new'
   if (value && seeded !== key) {
     setSeeded(key)
@@ -337,12 +340,21 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
   }
   if (!value) return null
 
-  // A photo is held as a data URL so the board works offline and needs no bucket.
-  const pickImage = (file?: File) => {
+  // A photo is held as a data URL so the board works offline and needs no
+  // bucket — which means it also goes into localStorage with the rest of the
+  // store. A phone photo is several megabytes and base64 makes it a third
+  // bigger again, which is enough on its own to blow Safari's quota for the
+  // whole origin. So it is scaled down first, as every other photo in the app
+  // already is.
+  const pickImage = async (file?: File) => {
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setForm((f) => ({ ...f, image: String(reader.result) }))
-    reader.readAsDataURL(file)
+    try {
+      const small = await resizeImage(await readFileAsDataUrl(file), 640)
+      setForm((f) => ({ ...f, image: small }))
+      setImageError(null)
+    } catch (e) {
+      setImageError(e instanceof Error ? e.message : String(e))
+    }
   }
 
   return (
@@ -397,6 +409,7 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
             </label>
             {form.image && <button className="btn-ghost" onClick={() => setForm({ ...form, image: '' })}>Remove</button>}
           </div>
+          {imageError && <p className="text-[11.5px] text-rose-600 mt-1.5">{imageError}</p>}
         </Field>
       </div>
     </Modal>

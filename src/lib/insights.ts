@@ -284,7 +284,7 @@ export function buildFactsPack(
     accounts: accounts.map((a) => ({
       name: a.name, type: a.type, balance: a.balance, currency: a.currency,
     })),
-    bills: bills.map((b) => ({ name: b.name, amount: b.amount, due: b.dueDate, status: b.status })),
+    bills: bills.map((b) => ({ name: b.name, amount: b.amount, currency: b.currency ?? 'AED', due: b.dueDate, status: b.status })),
     loans: loans.map((l) => ({
       name: l.name, outstanding: l.outstanding, emi: l.emi, next: l.nextPayment,
       currency: l.currency, status: l.status,

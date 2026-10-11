@@ -49,6 +49,11 @@ export const V4_COLUMNS: Partial<Record<Collection, string[]>> = {
   goals: ['currency'],
 }
 
+/** Columns added to older tables by 0020 — stripped from writes until it has run. */
+export const V6_COLUMNS: Partial<Record<Collection, string[]>> = {
+  bills: ['currency'],
+}
+
 /** Columns added to older tables by 0015 — stripped from writes until it has run. */
 export const V2_COLUMNS: Partial<Record<Collection, string[]>> = {
   accounts: ['opening_balance', 'opening_confirmed', 'credit_limit', 'bank_style'],
@@ -196,12 +201,12 @@ export const MAPPERS: {
 
   bills: {
     to: (b: Bill) => ({
-      id: b.id, name: b.name, category: b.category, amount: b.amount, due_date: b.dueDate,
-      frequency: b.frequency, status: b.status, autopay: b.autopay, icon: b.icon,
+      id: b.id, name: b.name, category: b.category, amount: b.amount, currency: b.currency ?? 'AED',
+      due_date: b.dueDate, frequency: b.frequency, status: b.status, autopay: b.autopay, icon: b.icon,
     }),
     from: (r): Bill => ({
-      id: r.id, name: r.name, category: r.category, amount: num(r.amount), dueDate: r.due_date,
-      frequency: r.frequency, status: r.status, autopay: Boolean(r.autopay), icon: r.icon,
+      id: r.id, name: r.name, category: r.category, amount: num(r.amount), currency: r.currency ?? 'AED',
+      dueDate: r.due_date, frequency: r.frequency, status: r.status, autopay: Boolean(r.autopay), icon: r.icon,
     }),
   },
 

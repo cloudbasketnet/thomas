@@ -4,27 +4,31 @@ import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
-import { daysLeft, fmtDate, money, pct, TODAY } from '@/lib/format'
+import { daysLeft, fmtDate, money, pct, toBase, TODAY } from '@/lib/format'
 import { billSummary } from '@/lib/selectors'
-import type { Bill } from '@/types'
+import type { Bill, Currency } from '@/types'
+
+const CURRENCIES: Currency[] = ['AED', 'INR', 'USD']
+/** A bill's own amount, in the currency it is billed in. */
+const billBase = (b: Bill) => toBase(b.amount, b.currency ?? 'AED')
 
 export default function Bills() {
   const { bills, addBill, updateBill, removeBill, payBill } = useStore()
   const [filter, setFilter] = useState<'All' | Bill['status']>('All')
   const [modal, setModal] = useState(false)
   const [form, setForm] = useState({
-    name: '', category: 'Utilities', amount: '', dueDate: TODAY,
+    name: '', category: 'Utilities', amount: '', currency: 'AED' as Currency, dueDate: TODAY,
     frequency: 'Monthly' as Bill['frequency'], autopay: false, icon: '📄',
   })
 
   const s = useMemo(() => billSummary(bills), [bills])
-  const monthlyTotal = bills.filter((b) => b.frequency === 'Monthly').reduce((a, b) => a + b.amount, 0)
+  const monthlyTotal = bills.filter((b) => b.frequency === 'Monthly').reduce((a, b) => a + billBase(b), 0)
   const autopayCount = bills.filter((b) => b.autopay).length
   const list = bills.filter((b) => (filter === 'All' ? true : b.status === filter)).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
 
   const byCat = useMemo(() => {
     const m = new Map<string, number>()
-    for (const b of bills) m.set(b.category, (m.get(b.category) ?? 0) + b.amount)
+    for (const b of bills) m.set(b.category, (m.get(b.category) ?? 0) + billBase(b))
     return [...m.entries()].map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value)
   }, [bills])
   const catTotal = byCat.reduce((a, c) => a + c.value, 0)
@@ -32,10 +36,10 @@ export default function Bills() {
   const save = () => {
     if (!form.name.trim() || !Number(form.amount)) return
     addBill({
-      name: form.name.trim(), category: form.category, amount: Number(form.amount), dueDate: form.dueDate,
-      frequency: form.frequency, status: 'Pending', autopay: form.autopay, icon: form.icon || '📄',
+      name: form.name.trim(), category: form.category, amount: Number(form.amount), currency: form.currency,
+      dueDate: form.dueDate, frequency: form.frequency, status: 'Pending', autopay: form.autopay, icon: form.icon || '📄',
     })
-    setForm({ name: '', category: 'Utilities', amount: '', dueDate: TODAY, frequency: 'Monthly', autopay: false, icon: '📄' })
+    setForm({ name: '', category: 'Utilities', amount: '', currency: form.currency, dueDate: TODAY, frequency: 'Monthly', autopay: false, icon: '📄' })
     setModal(false)
   }
 
@@ -54,7 +58,7 @@ export default function Bills() {
           footer={<span className="text-slate-400">{s.upcoming.length} bills unpaid</span>} />
         <StatCard label="Paid This Month" value={money(s.paidTotal)} icon={<CheckCircle2 size={20} />} tint="#10b981"
           footer={<div><div className="text-[10px] text-slate-400 mb-1">{pct(s.paidTotal, s.paidTotal + s.upcomingTotal)}% settled</div><Progress value={s.paidTotal} max={s.paidTotal + s.upcomingTotal} color="#10b981" height={5} /></div>} />
-        <StatCard label="Overdue" value={money(s.overdue.reduce((a, b) => a + b.amount, 0))} icon={<AlertCircle size={20} />} tint="#ef4444"
+        <StatCard label="Overdue" value={money(s.overdue.reduce((a, b) => a + billBase(b), 0))} icon={<AlertCircle size={20} />} tint="#ef4444"
           footer={<span className="text-slate-400">{s.overdue.length} bills · {autopayCount} on autopay</span>} />
       </div>
 
@@ -106,7 +110,7 @@ export default function Bills() {
                           </span>
                         )}
                       </td>
-                      <td className="td text-right font-bold tabular-nums">{money(b.amount)}</td>
+                      <td className="td text-right font-bold tabular-nums">{money(b.amount, b.currency)}</td>
                       <td className="td">
                         <button
                           onClick={() => updateBill(b.id, { autopay: !b.autopay })}
@@ -156,7 +160,7 @@ export default function Bills() {
                     <p className="text-[12.5px] font-bold text-slate-800 truncate">{b.name}</p>
                     <p className="text-[11px] text-slate-400">{fmtDate(b.dueDate)}</p>
                   </div>
-                  <span className="text-[12.5px] font-extrabold text-slate-800">{money(b.amount)}</span>
+                  <span className="text-[12.5px] font-extrabold text-slate-800">{money(b.amount, b.currency)}</span>
                 </div>
               ))}
               {s.upcoming.length === 0 && <Empty text="Everything is paid 🎉" />}
@@ -186,7 +190,19 @@ export default function Bills() {
             </select>
           </Field>
           <Field label="Icon"><input className="input" value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} maxLength={2} /></Field>
-          <Field label="Amount (AED)"><input className="input" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></Field>
+          <Field label="Amount">
+            <div className="flex gap-2">
+              <input className="input flex-1 min-w-0" type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+              <select
+                className="input w-24 px-2"
+                value={form.currency}
+                onChange={(e) => setForm({ ...form, currency: e.target.value as Currency })}
+                title="The currency this bill is billed in"
+              >
+                {CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+          </Field>
           <Field label="Due Date"><input className="input" type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></Field>
           <Field label="Frequency">
             <select className="input" value={form.frequency} onChange={(e) => setForm({ ...form, frequency: e.target.value as Bill['frequency'] })}>

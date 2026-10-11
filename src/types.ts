@@ -143,6 +143,8 @@ export interface Bill {
   name: string
   category: string
   amount: number
+  /** Currency `amount` is in. Bills created before this existed are AED. */
+  currency?: Currency
   dueDate: string
   frequency: 'Monthly' | 'Quarterly' | 'Yearly' | 'Weekly'
   status: 'Paid' | 'Pending' | 'Overdue'

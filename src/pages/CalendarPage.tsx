@@ -33,7 +33,7 @@ export default function CalendarPage() {
     const out: Event[] = []
     for (const t of transactions) out.push({ date: t.date, label: t.description, type: t.type, amount: t.amount, currency: t.currency })
     for (const l of loans) if (l.status !== 'Closed') out.push({ date: l.nextPayment, label: `${l.name} EMI`, type: 'loan', amount: l.emi, currency: l.currency })
-    for (const b of bills) out.push({ date: b.dueDate, label: `${b.name} due`, type: 'bill', amount: b.amount, currency: 'AED' })
+    for (const b of bills) out.push({ date: b.dueDate, label: `${b.name} due`, type: 'bill', amount: b.amount, currency: b.currency ?? 'AED' })
     for (const d of documents) out.push({ date: d.expiry, label: `${d.name} expires`, type: 'document' })
     for (const n of notes) if (!n.done) out.push({ date: n.dueDate, label: n.title, type: 'note' })
     return out

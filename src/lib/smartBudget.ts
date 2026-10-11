@@ -173,7 +173,7 @@ function billCandidates(c: BudgetContext): Candidate[] {
     for (const date of due) {
       const thisCycle = month(b.dueDate) === c.month
       out.push({
-        month: c.month, name: b.name, category: b.category, amount: b.amount, currency: 'AED', dueDate: date,
+        month: c.month, name: b.name, category: b.category, amount: b.amount, currency: b.currency ?? 'AED', dueDate: date,
         sourceKind: 'bill', sourceId: b.id, sourceKey: b.frequency === 'Weekly' ? `bill:${b.id}:${date}` : `bill:${b.id}`,
         reason: `${b.frequency} bill / subscription`, base: 'Planned',
         paidHandMarked: thisCycle && b.status === 'Paid', paidAmount: thisCycle && b.status === 'Paid' ? b.amount : undefined,

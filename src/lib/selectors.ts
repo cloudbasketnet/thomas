@@ -221,10 +221,13 @@ export function loanSummary(loans: Loan[]) {
 }
 
 export function billSummary(bills: Bill[]) {
+  // A bill is billed in its own currency, so every one is converted before it
+  // is added in — otherwise a 10,000 rupee bill would count as 10,000 dirhams.
+  const base = (b: Bill) => toBase(b.amount, b.currency ?? 'AED')
   const upcoming = bills.filter((b) => b.status !== 'Paid')
-  const upcomingTotal = upcoming.reduce((acc, b) => acc + b.amount, 0)
+  const upcomingTotal = upcoming.reduce((acc, b) => acc + base(b), 0)
   const overdue = bills.filter((b) => b.status === 'Overdue')
-  const paidTotal = bills.filter((b) => b.status === 'Paid').reduce((acc, b) => acc + b.amount, 0)
+  const paidTotal = bills.filter((b) => b.status === 'Paid').reduce((acc, b) => acc + base(b), 0)
   return { upcoming, upcomingTotal, overdue, paidTotal }
 }
 

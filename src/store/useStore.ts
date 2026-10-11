@@ -15,6 +15,7 @@ import { methodFor } from '@/lib/accounting'
 import { DEFAULT_CATEGORIES } from '@/data/categories'
 import type { Analysis } from '@/lib/gemini'
 import { hasSupabase } from '@/lib/supabase'
+import { idb, isQuotaError } from '@/lib/idbStorage'
 import { deleteRow, upsertRow, upsertSettings, type RemoteData, type SessionContext } from '@/lib/sync'
 import type { Collection } from '@/lib/mappers'
 
@@ -359,19 +360,19 @@ function unlinkBudgetPayment(txnId: string) {
 }
 
 /**
- * The localStorage cache behind `persist`.
+ * The offline cache behind `persist`.
  *
- * Two things matter here, and both of them are about the main thread.
+ * It writes to IndexedDB (see src/lib/idbStorage.ts) rather than localStorage,
+ * which is both far larger and off the main thread. Two things are still
+ * handled here:
  *
- * Writing is deferred. The whole dataset is serialised on every write, and a
+ * Writes are coalesced. The whole dataset is serialised on every write, and a
  * single action causes more than one: a mutation sets state, then recompute()
- * re-derives balances and sets it again. Doing that synchronously on each one
- * is what makes an iPad stutter while you type. Writes are coalesced into one
- * pass shortly after things settle, and flushed immediately when the page is
- * hidden or closed so nothing is lost. The data in memory is authoritative
- * either way — this is only the copy for the next load.
+ * re-derives balances and sets it again. Batching them into one pass once
+ * things settle saves that work, and the pending copy is flushed when the page
+ * is hidden or closed so nothing is lost.
  *
- * Quota failures are caught rather than thrown. The throw used to escape
+ * Running out of room is caught rather than thrown. The throw used to escape
  * through whatever triggered it, and the sign-in path reported it as "Cloud
  * sync unavailable", blaming the network for a full local cache.
  */
@@ -384,16 +385,14 @@ const cache = (() => {
     const job = pending
     pending = null
     if (!job) return
-    try {
-      localStorage.setItem(job.key, job.value)
-      if (useStore.getState().storageFull) useStore.setState({ storageFull: false })
-    } catch (e) {
-      const quota = e instanceof DOMException &&
-        (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)
-      if (quota) {
-        if (!useStore.getState().storageFull) useStore.setState({ storageFull: true })
-      } else throw e
-    }
+    idb.set(job.key, job.value).then(
+      () => { if (useStore.getState().storageFull) useStore.setState({ storageFull: false }) },
+      (e) => {
+        if (isQuotaError(e)) {
+          if (!useStore.getState().storageFull) useStore.setState({ storageFull: true })
+        } else throw e
+      },
+    )
   }
 
   if (typeof window !== 'undefined') {
@@ -404,10 +403,7 @@ const cache = (() => {
   }
 
   return {
-    getItem: (k: string) => {
-      if (pending?.key === k) return pending.value
-      try { return localStorage.getItem(k) } catch { return null }
-    },
+    getItem: (k: string) => (pending?.key === k ? pending.value : idb.get(k)),
     setItem: (k: string, v: string) => {
       pending = { key: k, value: v }
       if (timer) clearTimeout(timer)
@@ -416,7 +412,7 @@ const cache = (() => {
     removeItem: (k: string) => {
       if (pending?.key === k) pending = null
       if (timer) { clearTimeout(timer); timer = null }
-      try { localStorage.removeItem(k) } catch { /* nothing to undo */ }
+      void idb.del(k)
     },
   }
 })()

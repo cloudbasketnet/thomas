@@ -27,6 +27,14 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null)
   const clearLocalData = useStore((s) => s.clearLocalData)
   const [phase, setPhase] = useState<Phase>(hasSupabase ? 'checking' : 'ready')
+  /*
+   * The cache is read from IndexedDB, which is asynchronous, so the store
+   * starts on seed data and is replaced a moment later. Rendering in that gap
+   * would flash somebody else's example figures, and worse, an edit made in it
+   * would be overwritten by the rehydrate. So nothing renders until the cached
+   * copy has landed.
+   */
+  const [hydrated, setHydrated] = useState(() => useStore.persist.hasHydrated())
   const [error, setError] = useState<string | null>(null)
   // The user whose data is already loaded. Guards against the duplicate
   // INITIAL_SESSION callback and against TOKEN_REFRESHED re-pulling everything
@@ -39,6 +47,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const finishRef = useRef<((session: SessionContext) => Promise<void>) | null>(null)
 
   // ---- watch the Supabase session -----------------------------------------
+  useEffect(() => {
+    if (hydrated) return
+    return useStore.persist.onFinishHydration(() => setHydrated(true))
+  }, [hydrated])
+
   useEffect(() => {
     if (!hasSupabase || !supabase) return
 
@@ -142,13 +155,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
     }
   }, [setSession, hydrate, clearLocalData, setContext])
 
-  if (phase === 'checking' || phase === 'loading-data') {
+  if (!hydrated || phase === 'checking' || phase === 'loading-data') {
     return (
       <div className="h-screen grid place-items-center bg-canvas">
         <div className="text-center">
           <Loader2 size={26} className="animate-spin text-brand-600 mx-auto mb-3" />
           <p className="text-[13px] font-semibold text-slate-600">
-            {phase === 'checking' ? 'Checking your session…' : 'Loading your finances…'}
+            {!hydrated ? 'Opening your records…' : phase === 'checking' ? 'Checking your session…' : 'Loading your finances…'}
           </p>
         </div>
       </div>

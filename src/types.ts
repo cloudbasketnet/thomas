@@ -319,7 +319,7 @@ export interface FamilyAdvisorProfile {
 export interface SettingsExtra {
   theme?: {
     mode: ThemeMode; color: ThemeColor; cardStyle: CardStyle
-    cardSize?: CardSize; density?: Density; categoryColors?: CategoryColors; statusColors?: StatusColors
+    cardSize?: CardSize; density?: Density; accent?: string; brandCustom?: string; categoryColors?: CategoryColors; statusColors?: StatusColors
   }
   profilePhoto?: string
   statusTiers?: StatusTier[]

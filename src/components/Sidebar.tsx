@@ -55,8 +55,20 @@ export function Sidebar({
   collapsed?: boolean
   onToggle?: () => void
 }) {
-  const s = useStore()
-  const { documents, notes, settings, accounts, transactions, transfers, loans, assets, bills, budgetItems, people } = s
+  // Narrow subscriptions: this component is on every screen, so subscribing to
+  // the whole store would re-render the nav on every change anywhere.
+  const documents = useStore((s) => s.documents)
+  const notes = useStore((s) => s.notes)
+  const settings = useStore((s) => s.settings)
+  const accounts = useStore((s) => s.accounts)
+  const transactions = useStore((s) => s.transactions)
+  const transfers = useStore((s) => s.transfers)
+  const loans = useStore((s) => s.loans)
+  const assets = useStore((s) => s.assets)
+  const bills = useStore((s) => s.bills)
+  const budgetItems = useStore((s) => s.budgetItems)
+  const people = useStore((s) => s.people)
+  const membership = useStore((s) => s.membership)
 
   const [ask, setAsk] = useState(false)
 
@@ -106,7 +118,7 @@ export function Sidebar({
       </div>
 
       <nav className={`flex-1 overflow-y-auto scroll-thin pb-2 ${collapsed ? 'px-2' : 'px-2.5'}`}>
-        {NAV.filter((n) => canOpen(useStore.getState().membership, n.to)).map(({ to, label, icon: Icon, ...rest }) => {
+        {NAV.filter((n) => canOpen(membership, n.to)).map(({ to, label, icon: Icon, ...rest }) => {
           const count = 'badge' in rest && rest.badge ? badges[rest.badge as string] : 0
           return (
             <NavLink
@@ -123,7 +135,7 @@ export function Sidebar({
                   // The active row is an amber pill with ink-dark text, not a
                   // filled brand-blue bar — see the reference design.
                   isActive
-                    ? 'bg-accent-300 text-ink shadow-sm shadow-accent-300/50'
+                    ? 'bg-accent-300 shadow-sm shadow-accent-300/50 [color:var(--accent-ink,#0f2744)]'
                     : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
                 ].join(' ')
               }
@@ -132,7 +144,7 @@ export function Sidebar({
                 <>
                   <Icon
                     size={collapsed ? 18 : 17}
-                    className={isActive ? 'text-ink shrink-0' : 'text-slate-400 group-hover:text-slate-600 shrink-0'}
+                    className={isActive ? 'shrink-0 [color:var(--accent-ink,#0f2744)]' : 'text-slate-400 group-hover:text-slate-600 shrink-0'}
                   />
                   {!collapsed && <span className="flex-1 truncate">{label}</span>}
                   {count > 0 && (
@@ -140,7 +152,7 @@ export function Sidebar({
                       className={[
                         'grid place-items-center rounded-full font-bold shrink-0',
                         collapsed ? 'absolute top-1 right-1 h-4 min-w-4 px-1 text-[9px]' : 'h-4 min-w-4 px-1 text-[9.5px]',
-                        isActive ? 'bg-ink/15 text-ink' : 'bg-rose-500 text-white',
+                        isActive ? 'bg-black/15 [color:var(--accent-ink,#0f2744)]' : 'bg-rose-500 text-white',
                       ].join(' ')}
                     >
                       {count}

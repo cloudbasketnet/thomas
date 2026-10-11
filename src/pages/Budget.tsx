@@ -4,7 +4,7 @@ import { CopyPlus, Gauge, History, Pencil, PiggyBank, Plus, Target, Trash2, Wall
 import { Link } from 'react-router-dom'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, PageHeader, Progress, StatCard, Empty, Switch } from '@/components/ui/Primitives'
+import { Card, CardHead, ColorChoice, Empty, PageHeader, Progress, StatCard, Switch } from '@/components/ui/Primitives'
 import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
 import { compact, convert, money, pct } from '@/lib/format'
@@ -503,12 +503,7 @@ function CategoryBudgets() {
               </select>
             </Field>
             <Field label="Colour">
-              <div className="flex gap-2 flex-wrap items-center h-10">
-                {['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4', '#eab308'].map((c) => (
-                  <button key={c} onClick={() => setForm({ ...form, color: c })}
-                    className={`h-7 w-7 rounded-lg cursor-pointer ${form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`} style={{ background: c }} />
-                ))}
-              </div>
+              <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} />
             </Field>
           </div>
 

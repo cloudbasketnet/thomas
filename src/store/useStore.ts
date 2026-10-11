@@ -358,6 +358,69 @@ function unlinkBudgetPayment(txnId: string) {
   }
 }
 
+/**
+ * The localStorage cache behind `persist`.
+ *
+ * Two things matter here, and both of them are about the main thread.
+ *
+ * Writing is deferred. The whole dataset is serialised on every write, and a
+ * single action causes more than one: a mutation sets state, then recompute()
+ * re-derives balances and sets it again. Doing that synchronously on each one
+ * is what makes an iPad stutter while you type. Writes are coalesced into one
+ * pass shortly after things settle, and flushed immediately when the page is
+ * hidden or closed so nothing is lost. The data in memory is authoritative
+ * either way — this is only the copy for the next load.
+ *
+ * Quota failures are caught rather than thrown. The throw used to escape
+ * through whatever triggered it, and the sign-in path reported it as "Cloud
+ * sync unavailable", blaming the network for a full local cache.
+ */
+const cache = (() => {
+  let pending: { key: string; value: string } | null = null
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  const write = () => {
+    if (timer) { clearTimeout(timer); timer = null }
+    const job = pending
+    pending = null
+    if (!job) return
+    try {
+      localStorage.setItem(job.key, job.value)
+      if (useStore.getState().storageFull) useStore.setState({ storageFull: false })
+    } catch (e) {
+      const quota = e instanceof DOMException &&
+        (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)
+      if (quota) {
+        if (!useStore.getState().storageFull) useStore.setState({ storageFull: true })
+      } else throw e
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    // pagehide is the one Safari can be relied on for; visibilitychange covers
+    // switching apps on a tablet, which is how a session usually ends there.
+    window.addEventListener('pagehide', write)
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') write() })
+  }
+
+  return {
+    getItem: (k: string) => {
+      if (pending?.key === k) return pending.value
+      try { return localStorage.getItem(k) } catch { return null }
+    },
+    setItem: (k: string, v: string) => {
+      pending = { key: k, value: v }
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(write, 800)
+    },
+    removeItem: (k: string) => {
+      if (pending?.key === k) pending = null
+      if (timer) { clearTimeout(timer); timer = null }
+      try { localStorage.removeItem(k) } catch { /* nothing to undo */ }
+    },
+  }
+})()
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
@@ -1004,26 +1067,7 @@ export const useStore = create<State>()(
        * working from the data already in memory; what is lost is only the
        * cache for the next reload, and anything signed in is on the server.
        */
-      storage: createJSONStorage(() => ({
-        getItem: (k) => {
-          try { return localStorage.getItem(k) } catch { return null }
-        },
-        setItem: (k, v) => {
-          try {
-            localStorage.setItem(k, v)
-            if (useStore.getState().storageFull) useStore.setState({ storageFull: false })
-          } catch (e) {
-            const quota = e instanceof DOMException &&
-              (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22)
-            if (quota) {
-              if (!useStore.getState().storageFull) useStore.setState({ storageFull: true })
-            } else throw e
-          }
-        },
-        removeItem: (k) => {
-          try { localStorage.removeItem(k) } catch { /* nothing to undo */ }
-        },
-      })),
+      storage: createJSONStorage(() => cache),
       onRehydrateStorage: () => (state) => {
         if (!state) return
         setBaseCurrency(state.settings.baseCurrency)

@@ -1,7 +1,10 @@
 import { Check, Landmark, Monitor, Moon, Sun } from 'lucide-react'
+
+/** Warm, legible highlights to start from; any colour is reachable from the picker. */
+const ACCENTS = ['#ffd84d', '#fbbf24', '#f59e0b', '#34d399', '#38bdf8', '#2563eb', '#a78bfa', '#f472b6', '#f87171', '#0f2744']
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, StatCard } from '@/components/ui/Primitives'
-import { COLOR_SWATCH, DEFAULT_THEME, applyTheme } from '@/lib/theme'
+import { Card, CardHead, ColorChoice, StatCard } from '@/components/ui/Primitives'
+import { COLOR_SWATCH, DEFAULT_THEME, applyTheme, readableOn } from '@/lib/theme'
 import type { CardSize, CardStyle, CategoryColors, Density, StatusColors, ThemeColor, ThemeMode } from '@/types'
 
 const MODES: { key: ThemeMode; label: string; icon: typeof Sun }[] = [
@@ -64,13 +67,27 @@ export function AppearanceTab() {
         <CardHead title="Colour theme" sub="Buttons, highlights and charts follow this colour" />
         <div className="px-5 pb-5 flex flex-wrap gap-3">
           {(Object.keys(COLOR_SWATCH) as ThemeColor[]).map((c) => (
-            <button key={c} onClick={() => set({ color: c })} className="text-center cursor-pointer group">
+            <button key={c} onClick={() => set({ color: c, brandCustom: undefined })} className="text-center cursor-pointer group">
               <span className="relative block h-14 w-14 rounded-2xl shadow-md group-hover:scale-105 transition" style={{ background: `linear-gradient(135deg, ${COLOR_SWATCH[c].from}, ${COLOR_SWATCH[c].to})` }}>
                 {theme.color === c && <Check size={20} className="absolute inset-0 m-auto text-white" />}
               </span>
               <span className="text-[11px] font-semibold text-slate-600 mt-1.5 block">{COLOR_SWATCH[c].label}</span>
             </button>
           ))}
+        </div>
+        <div className="px-5 pb-5">
+          <p className="text-[11.5px] text-slate-500 mb-2">
+            Or pick your own. The lighter and darker shades the app needs are worked out from it.
+          </p>
+          <ColorChoice
+            value={theme.brandCustom ?? COLOR_SWATCH[theme.color].from}
+            onChange={(brandCustom) => set({ brandCustom })}
+          />
+          {theme.brandCustom && (
+            <button className="btn-ghost mt-3" onClick={() => set({ brandCustom: undefined })}>
+              Back to {COLOR_SWATCH[theme.color].label}
+            </button>
+          )}
         </div>
       </Card>
 
@@ -84,6 +101,32 @@ export function AppearanceTab() {
               <p className="text-[11px] text-slate-400">{c.hint}</p>
             </button>
           ))}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHead
+          title="Highlight colour"
+          sub="The colour on the menu item you are currently on"
+        />
+        <div className="px-5 pb-5">
+          <ColorChoice
+            value={theme.accent ?? DEFAULT_THEME.accent}
+            onChange={(accent) => set({ accent })}
+            swatches={ACCENTS}
+          />
+          <div className="mt-4 max-w-xs rounded-xl border border-[#eef2f8] p-2">
+            <p className="text-[10.5px] text-slate-400 px-1 pb-1.5">Preview</p>
+            <span
+              className="flex items-center gap-3 rounded-xl px-3 h-11 text-[13px] font-semibold"
+              style={{ background: theme.accent ?? DEFAULT_THEME.accent, color: readableOn(theme.accent ?? DEFAULT_THEME.accent) }}
+            >
+              <Landmark size={17} /> Loans &amp; EMIs
+            </span>
+            <p className="text-[10.5px] text-slate-400 px-1 pt-2">
+              The text flips between dark and white on its own, whichever stays readable on the colour you pick.
+            </p>
+          </div>
         </div>
       </Card>
 

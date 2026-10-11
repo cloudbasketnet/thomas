@@ -320,3 +320,33 @@
   [data-density='compact'] .btn-rose,
   [data-density='compact'] .input { height: 2.75rem; }
 }
+
+/* =========================================================================
+   The top bar sits over scrolling content, so a translucent blur has to be
+   recomputed on every frame of every scroll. A tablet GPU feels that; it is
+   the difference between a smooth list and a stuttering one. Pointer-fine
+   devices keep the blur, touch devices get a plain opaque bar that composites
+   for free and looks all but identical.
+   ========================================================================= */
+.topbar {
+  background: var(--color-canvas);
+}
+@media (pointer: fine) {
+  .topbar {
+    background: color-mix(in srgb, var(--color-canvas) 85%, transparent);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+}
+/* Cards in the glass style blur too; that is the point of them, but a tablet
+   should not pay for it on every card at once. */
+@media (pointer: coarse) {
+  [data-cards='glass'] .card {
+    background: rgb(255 255 255 / 0.92);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  [data-cards='glass'][data-theme='dark'] .card {
+    background: rgb(16 26 46 / 0.95);
+  }
+}

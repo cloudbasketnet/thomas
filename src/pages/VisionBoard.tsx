@@ -5,7 +5,7 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Empty, PageHeader, Progress, StatCard, cx } from '@/components/ui/Primitives'
+import { Card, CardHead, ColorChoice, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { readFileAsDataUrl } from '@/lib/gemini'
 import { resizeImage } from '@/lib/image'
@@ -390,13 +390,7 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
           <input type="range" min={0} max={100} value={form.progress} onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })} className="w-full accent-brand-600 cursor-pointer" />
         </Field>
         <Field label="Colour" className="sm:col-span-2">
-          <div className="flex gap-2 flex-wrap">
-            {PALETTE.map((c) => (
-              <button key={c} onClick={() => setForm({ ...form, color: c })} aria-label={c}
-                className={cx('h-8 w-8 rounded-full cursor-pointer transition', form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : '')}
-                style={{ background: c }} />
-            ))}
-          </div>
+          <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} swatches={PALETTE} />
         </Field>
         <Field label="Photo (optional)" className="sm:col-span-2">
           <div className="flex items-center gap-3">
@@ -451,13 +445,7 @@ function WordModal({ value, onClose, onSave, onRemove }: {
         <Field label="Emoji"><input className="input" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} maxLength={4} /></Field>
         <Field label="A line about it" className="sm:col-span-2"><input className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Do it every day" /></Field>
         <Field label="Colour" className="sm:col-span-2">
-          <div className="flex gap-2 flex-wrap">
-            {PALETTE.map((c) => (
-              <button key={c} onClick={() => setForm({ ...form, color: c })} aria-label={c}
-                className={cx('h-8 w-8 rounded-full cursor-pointer transition', form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : '')}
-                style={{ background: c }} />
-            ))}
-          </div>
+          <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} swatches={PALETTE} />
         </Field>
       </div>
     </Modal>

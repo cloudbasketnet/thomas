@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, FolderTree, Plus, Sparkles, Tag, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Empty, PageHeader, StatCard } from '@/components/ui/Primitives'
+import { Card, CardHead, ColorChoice, Empty, PageHeader, StatCard } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { categoriesOf, subcategoriesOf } from '@/lib/selectors'
 import type { Category, CategoryKind } from '@/types'
@@ -281,16 +281,7 @@ export default function Categories() {
           </Field>
           <Field label="Colour">
             <div className="flex gap-2 flex-wrap pt-1.5">
-              {COLORS.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => setForm({ ...form, color: c })}
-                  className={`h-7 w-7 rounded-lg cursor-pointer ${
-                    form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''
-                  }`}
-                  style={{ background: c }}
-                />
-              ))}
+              <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} swatches={COLORS} />
             </div>
           </Field>
         </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Flag, PiggyBank, Plus, Target, Trash2, TrendingUp } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
+import { Card, CardHead, ColorChoice, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
 import { Modal, Field } from '@/components/ui/Modal'
 import { daysLeft, fmtDate, money, pct, toBase } from '@/lib/format'
 import type { Currency, Goal } from '@/types'
@@ -162,12 +162,7 @@ export default function Goals() {
           <Field label="Target Date"><input className="input" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} /></Field>
           <Field label="Icon"><input className="input" value={form.icon} onChange={(e) => setForm({ ...form, icon: e.target.value })} maxLength={2} /></Field>
           <Field label="Colour" className="col-span-2">
-            <div className="flex gap-2 flex-wrap">
-              {['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#f43f5e'].map((c) => (
-                <button key={c} onClick={() => setForm({ ...form, color: c })}
-                  className={`h-8 w-8 rounded-lg cursor-pointer ${form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`} style={{ background: c }} />
-              ))}
-            </div>
+            <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} />
           </Field>
         </div>
       </Modal>

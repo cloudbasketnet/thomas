@@ -17,7 +17,14 @@ interface Hit {
 
 export function Topbar({ onMenu }: { onMenu: () => void }) {
   const nav = useNavigate()
-  const { settings, updateSettings, transactions, accounts, documents, notes, loans, bills } = useStore()
+  const settings = useStore((s) => s.settings)
+  const updateSettings = useStore((s) => s.updateSettings)
+  const transactions = useStore((s) => s.transactions)
+  const accounts = useStore((s) => s.accounts)
+  const documents = useStore((s) => s.documents)
+  const notes = useStore((s) => s.notes)
+  const loans = useStore((s) => s.loans)
+  const bills = useStore((s) => s.bills)
   const userEmail = useStore((s) => s.userEmail)
   const syncError = useStore((s) => s.syncError)
   const lastSynced = useStore((s) => s.lastSynced)
@@ -85,7 +92,10 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
     return out.slice(0, 8)
   }, [q, transactions, accounts, documents, notes, loans])
 
-  const { settings: cfg, budgets, transactions: txns, analysis } = useStore()
+  const cfg = settings
+  const budgets = useStore((s) => s.budgets)
+  const txns = transactions
+  const analysis = useStore((s) => s.analysis)
 
   const alerts = useMemo(() => {
     const items: { text: string; tone: string; to: string }[] = []
@@ -115,7 +125,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
   }, [documents, loans, bills, txns, budgets, cfg, analysis])
 
   return (
-    <header className="sticky top-0 z-30 bg-canvas/85 backdrop-blur-xl pad-safe-top">
+    <header className="topbar sticky top-0 z-30 pad-safe-top">
       <div className="h-[72px] px-4 lg:px-6 flex items-center gap-2.5">
         <button onClick={onMenu} className="lg:hidden h-11 w-11 shrink-0 grid place-items-center rounded-full bg-white border border-[#e9eef8] hover:bg-slate-50 cursor-pointer">
           <Menu size={18} />

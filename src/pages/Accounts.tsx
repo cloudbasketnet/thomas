@@ -5,7 +5,7 @@ import {
   Landmark, List, MoreVertical, Plus, Receipt, Star, Trash2, Wallet, PieChart, Pencil, X,
 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Badge, PageHeader, StatCard, statusTone } from '@/components/ui/Primitives'
+import { Badge, Card, CardHead, ColorChoice, PageHeader, StatCard, statusTone } from '@/components/ui/Primitives'
 import { Donut, DonutLegend } from '@/components/charts/Charts'
 import { Modal, Field } from '@/components/ui/Modal'
 import { TransferModal, type TransferPreset } from '@/components/TransferModal'
@@ -655,25 +655,7 @@ function AccountModal({
         )}
 
         <Field label="Accent Colour" className="col-span-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            {['#3b82f6', '#10b981', '#8b5cf6', '#f59e0b', '#ef4444', '#ec4899', '#06b6d4'].map((c) => (
-              <button
-                key={c}
-                onClick={() => setForm({ ...form, color: c })}
-                className={`h-8 w-8 rounded-lg cursor-pointer transition ${form.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`}
-                style={{ background: c }}
-              />
-            ))}
-            <span className="w-px h-6 bg-[#e2e8f0] mx-1" />
-            <label className="relative h-8 w-8 rounded-lg cursor-pointer overflow-hidden shrink-0 ring-1 ring-inset ring-[#e2e8f0]" title="Pick a custom colour" style={{ background: form.color }}>
-              <input
-                type="color"
-                value={form.color}
-                onChange={(e) => setForm({ ...form, color: e.target.value })}
-                className="absolute inset-0 h-full w-full opacity-0 cursor-pointer"
-              />
-            </label>
-          </div>
+          <ColorChoice value={form.color} onChange={(color) => setForm({ ...form, color })} />
           <p className="text-[11px] text-slate-400 mt-1">
             Used for this account's card when no bank style is chosen above — pick a preset or your own custom colour.
           </p>

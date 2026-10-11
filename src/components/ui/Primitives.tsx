@@ -213,3 +213,82 @@ export function Empty({ text }: { text: string }) {
 export function Section({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={cx('animate-fade-up', className)}>{children}</div>
 }
+
+/** The spread every colour picker in the app offers before you reach for a custom one. */
+export const SWATCHES = [
+  '#3b82f6', '#0ea5e9', '#06b6d4', '#10b981', '#22c55e', '#eab308',
+  '#f59e0b', '#f97316', '#ef4444', '#f43f5e', '#ec4899', '#8b5cf6', '#6366f1', '#64748b',
+]
+
+/**
+ * Preset swatches plus a real colour picker, so a choice is never limited to
+ * the handful somebody picked in advance. The custom well shows the current
+ * colour whether it came from a swatch or from the picker, and typing a hex
+ * works for anyone who knows the one they want.
+ */
+export function ColorChoice({
+  value,
+  onChange,
+  swatches = SWATCHES,
+  className = '',
+}: {
+  value: string
+  onChange: (hex: string) => void
+  swatches?: string[]
+  className?: string
+}) {
+  const custom = !swatches.some((c) => c.toLowerCase() === value.toLowerCase())
+  return (
+    <div className={cx('flex flex-wrap items-center gap-2', className)}>
+      {swatches.map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onChange(c)}
+          aria-label={c}
+          title={c}
+          className={cx(
+            'h-8 w-8 rounded-lg cursor-pointer transition hover:scale-105',
+            value.toLowerCase() === c.toLowerCase() ? 'ring-2 ring-offset-2 ring-slate-400' : '',
+          )}
+          style={{ background: c }}
+        />
+      ))}
+
+      <label
+        className={cx(
+          'relative h-8 w-8 rounded-lg cursor-pointer overflow-hidden grid place-items-center transition hover:scale-105',
+          custom ? 'ring-2 ring-offset-2 ring-slate-400' : '',
+        )}
+        title="Pick any colour"
+        style={
+          custom
+            ? { background: value }
+            : { background: 'conic-gradient(#ef4444,#f59e0b,#eab308,#22c55e,#06b6d4,#3b82f6,#8b5cf6,#ec4899,#ef4444)' }
+        }
+      >
+        {!custom && <span className="text-white text-[13px] font-bold drop-shadow">+</span>}
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 opacity-0 cursor-pointer"
+          aria-label="Pick any colour"
+        />
+      </label>
+
+      <input
+        value={value}
+        onChange={(e) => {
+          const v = e.target.value.trim()
+          // Only pass on a complete hex, so half-typed input never repaints the UI.
+          if (/^#[0-9a-fA-F]{6}$/.test(v)) onChange(v)
+        }}
+        placeholder="#000000"
+        maxLength={7}
+        className="h-8 w-[86px] rounded-lg border border-[#e4ebf6] bg-white px-2 text-[11.5px] font-mono text-slate-600 outline-none focus:border-brand-400"
+        aria-label="Colour hex code"
+      />
+    </div>
+  )
+}

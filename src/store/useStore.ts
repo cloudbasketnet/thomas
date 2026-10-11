@@ -68,6 +68,12 @@ interface State {
   schemaV4: boolean
   schemaV5: boolean
   schemaV6: boolean
+  /**
+   * Have the schema probes actually run against the database this session?
+   * Until they have, every schemaV* flag is just its default of false, which
+   * is not the same thing as a migration being missing.
+   */
+  schemaChecked: boolean
   ownerId: string | null
   membership: HouseholdMember | null
   setContext: (c: SessionContext) => void
@@ -441,9 +447,10 @@ export const useStore = create<State>()(
       schemaV4: false,
       schemaV5: false,
       schemaV6: false,
+      schemaChecked: false,
       ownerId: null,
       membership: null,
-      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, schemaV6: c.schemaV6, ownerId: c.ownerId, membership: c.membership }),
+      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, schemaV6: c.schemaV6, schemaChecked: true, ownerId: c.ownerId, membership: c.membership }),
 
       setSession: (userId, userEmail) => set({ userId, userEmail }),
       hydrate: (data) => {
@@ -1080,10 +1087,10 @@ export const useStore = create<State>()(
       partialize: (s) => {
         const {
           userId, userEmail, syncing, syncError, lastSynced, analysing, analysisError,
-          schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, ownerId, membership, ...data
+          schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaChecked, ownerId, membership, ...data
         } = s
         void userId; void userEmail; void syncing; void syncError; void lastSynced
-        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void schemaV6; void ownerId; void membership
+        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void schemaV6; void schemaChecked; void ownerId; void membership
         return data
       },
     },

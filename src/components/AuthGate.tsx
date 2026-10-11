@@ -23,6 +23,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const schemaV4 = useStore((s) => s.schemaV4)
   const schemaV5 = useStore((s) => s.schemaV5)
   const schemaV6 = useStore((s) => s.schemaV6)
+  const schemaChecked = useStore((s) => s.schemaChecked)
   const storageFull = useStore((s) => s.storageFull)
   const [notice, setNotice] = useState<string | null>(null)
   const clearLocalData = useStore((s) => s.clearLocalData)
@@ -205,7 +206,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
        * Phones get the full width; from sm the stack hugs the right edge.
        */}
       <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
-        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} schemaV6={schemaV6} />
+        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} schemaV6={schemaV6} checked={schemaChecked} />
         {storageFull && (
           <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -224,7 +225,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
             <div>
               <p className="text-[12.5px] font-bold text-amber-900">Cloud sync unavailable</p>
               <p className="text-[11.5px] text-amber-800 mt-0.5">{error}</p>
-              <p className="text-[11.5px] text-amber-700 mt-1">Working from local data for now.</p>
+              <p className="text-[11.5px] text-amber-700 mt-1">
+                Working from local data for now. Settings → Cloud Sync → Database status says what the database
+                replied.
+              </p>
             </div>
           </div>
         )}
@@ -245,7 +249,7 @@ const NOTICE_KEY = 'cb_migration_notice_collapsed'
  * together — a database that is up to date shows nothing at all.
  */
 function MigrationNotice({
-  supabase, schemaV2, schemaV3, schemaV4, schemaV5, schemaV6,
+  supabase, schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, checked,
 }: {
   supabase: boolean
   schemaV2: boolean
@@ -253,10 +257,19 @@ function MigrationNotice({
   schemaV4: boolean
   schemaV5: boolean
   schemaV6: boolean
+  checked: boolean
 }) {
   const [open, setOpen] = useState(() => sessionStorage.getItem(NOTICE_KEY) !== '1')
 
-  if (!supabase || (schemaV4 && schemaV5 && schemaV6)) return null
+  /*
+   * Until the probes have run, every flag is false because that is what they
+   * start as — not because the database is missing anything. Saying so anyway
+   * is how this ended up telling someone who had run all six files that none
+   * of them had taken. If resolveSession never completed, the cloud banner
+   * explains that; this one keeps quiet.
+   */
+  if (!supabase || !checked) return null
+  if (schemaV4 && schemaV5 && schemaV6) return null
 
   const pending: { file: string; adds: string }[] = []
   if (!schemaV2) pending.push({ file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, smart budget, family users' })

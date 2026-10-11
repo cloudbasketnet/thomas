@@ -23,8 +23,12 @@ create table if not exists public.schema_info (
   id      integer primary key default 1 check (id = 1),
   version integer not null
 );
+-- Only ever raises the recorded version. Without the guard, re-running this
+-- file after a later migration would stamp the database back to 15 and the app
+-- would think everything after it had been undone. Every later file guards the
+-- same way.
 insert into public.schema_info (id, version) values (1, 15)
-  on conflict (id) do update set version = excluded.version;
+  on conflict (id) do update set version = excluded.version where public.schema_info.version < 15;
 -- Supabase may switch row level security on for every new table; without a policy the
 -- version row would be invisible and the app would think this migration had not run.
 alter table public.schema_info enable row level security;

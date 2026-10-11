@@ -5,7 +5,8 @@ import { Card, CardHead, PageHeader } from '@/components/ui/Primitives'
 import { Field } from '@/components/ui/Modal'
 import { money } from '@/lib/format'
 import { hasSupabase, supabase } from '@/lib/supabase'
-import { COLLECTIONS, pullAll, pushAll, replaceRemote, wipeRemote } from '@/lib/sync'
+import { COLLECTIONS, pullAll, pushAll, replaceRemote, schemaReport, wipeRemote } from '@/lib/sync'
+import type { SchemaCheck } from '@/lib/sync'
 import type { Currency } from '@/types'
 import { AppearanceTab } from '@/pages/settings/AppearanceTab'
 import { StatusTab } from '@/pages/settings/StatusTab'
@@ -306,8 +307,72 @@ function GeneralSettings() {
             )}
           </div>
         </Card>
+
+        {hasSupabase && <DatabaseStatus />}
       </div>
     </div>
+  )
+}
+
+/**
+ * What the database actually answers, migration by migration.
+ *
+ * The notice on the dashboard can only say "not run yet". When that disagrees
+ * with what you believe you ran, the useful thing is the error Postgres gave
+ * back: a table that does not exist and a table you are not allowed to read
+ * look identical from the outside and need completely different fixes.
+ */
+function DatabaseStatus() {
+  const [report, setReport] = useState<Awaited<ReturnType<typeof schemaReport>> | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const run = async () => {
+    setBusy(true)
+    try { setReport(await schemaReport()) } finally { setBusy(false) }
+  }
+
+  return (
+    <Card>
+      <CardHead
+        title="Database status"
+        sub="Which migrations this database has actually had run"
+        right={<Database size={16} className="text-slate-400" />}
+      />
+      <div className="px-5 pb-5">
+        <button className="btn-ghost" onClick={run} disabled={busy}>
+          {busy ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />} Check the database
+        </button>
+
+        {report && (
+          <div className="mt-4 space-y-2">
+            <p className="text-[12px] text-slate-500">{report.versionDetail}</p>
+            {report.checks.map((c: SchemaCheck) => (
+              <div
+                key={c.file}
+                className={`rounded-xl border px-3.5 py-2.5 ${c.ok ? 'border-emerald-100 bg-emerald-50/60' : 'border-rose-100 bg-rose-50/60'}`}
+              >
+                <div className="flex items-start gap-2">
+                  <span className={`text-[12px] font-bold shrink-0 ${c.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
+                    {c.ok ? 'RUN' : 'MISSING'}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-mono font-semibold text-slate-700 break-all">{c.file}</p>
+                    <p className="text-[11px] text-slate-500">{c.adds}</p>
+                    <p className={`text-[11px] mt-1 ${c.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{c.detail}</p>
+                    {!c.ok && <p className="text-[10.5px] text-slate-400 mt-0.5 font-mono break-all">{c.probe}</p>}
+                  </div>
+                </div>
+              </div>
+            ))}
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              A migration shows as run the moment its table or column answers. If one says MISSING although you ran the
+              file, the message above is what Postgres replied — a 42P01 means the table is not there, a 42703 means the
+              column is not, and anything about permission or policy means it exists but this login cannot see it.
+            </p>
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }
 

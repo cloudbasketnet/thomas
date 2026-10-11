@@ -289,3 +289,68 @@ export async function listVerificationAttempts(): Promise<VerificationAttempt[]>
     questionText: r.question_text ?? '', selectedPersonId: r.selected_person_id ?? '', correct: Boolean(r.correct), at: r.at,
   }))
 }
+
+// ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+export interface SchemaCheck {
+  file: string
+  adds: string
+  /** The exact question asked of the database. */
+  probe: string
+  ok: boolean
+  detail: string
+}
+
+/**
+ * Run every migration probe and report what the database actually answered.
+ *
+ * The migration notice can only say "not run yet"; when that disagrees with
+ * what you believe you ran, the useful thing is the error Postgres gave back.
+ * A missing table and a permission problem look identical from the outside and
+ * need completely different fixes.
+ */
+export async function schemaReport(): Promise<{ version: number | null; versionDetail: string; checks: SchemaCheck[] }> {
+  const client = db()
+
+  let version: number | null = null
+  let versionDetail = ''
+  try {
+    const res = await client.from('schema_info').select('version').maybeSingle()
+    if (res.error) versionDetail = `schema_info is not readable: ${res.error.message}`
+    else if (!res.data) versionDetail = 'schema_info has no row — 0015 may not have finished.'
+    else {
+      version = res.data.version
+      versionDetail = `schema_info says version ${res.data.version}.`
+    }
+  } catch (e) {
+    versionDetail = e instanceof Error ? e.message : String(e)
+  }
+
+  const probes: { file: string; adds: string; table: string; column: string }[] = [
+    { file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, family users', table: 'household_members', column: 'member_id' },
+    { file: '0016_security_verification.sql', adds: 'login-lock questions, planned income', table: 'verification_questions', column: 'id' },
+    { file: '0018_goal_currency.sql', adds: "a savings goal's own currency", table: 'goals', column: 'currency' },
+    { file: '0019_vision_board.sql', adds: 'dreams, words, schedule, activity log', table: 'dreams', column: 'id' },
+    { file: '0020_bill_currency.sql', adds: "a bill's own currency", table: 'bills', column: 'currency' },
+  ]
+
+  const checks: SchemaCheck[] = []
+  for (const p of probes) {
+    const probe = `select ${p.column} from ${p.table} limit 1`
+    try {
+      const res = await client.from(p.table).select(p.column).limit(1)
+      checks.push({
+        file: p.file,
+        adds: p.adds,
+        probe,
+        ok: !res.error,
+        detail: res.error ? `${res.error.code ? `[${res.error.code}] ` : ''}${res.error.message}` : 'Answered — this migration has run.',
+      })
+    } catch (e) {
+      checks.push({ file: p.file, adds: p.adds, probe, ok: false, detail: e instanceof Error ? e.message : String(e) })
+    }
+  }
+  return { version, versionDetail, checks }
+}

@@ -12,6 +12,7 @@ const ExpenseReport = lazy(() => import('@/pages/ExpenseReport'))
 const Categories = lazy(() => import('@/pages/Categories'))
 const Budget = lazy(() => import('@/pages/Budget'))
 const LoansEmis = lazy(() => import('@/pages/LoansEmis'))
+const PaymentTimeline = lazy(() => import('@/pages/PaymentTimeline'))
 const People = lazy(() => import('@/pages/People'))
 const Bills = lazy(() => import('@/pages/Bills'))
 const Documents = lazy(() => import('@/pages/Documents'))
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="purchases" element={<Navigate to="/expense-report" replace />} />
             <Route path="budget" element={<Budget />} />
             <Route path="loans" element={<LoansEmis />} />
+            <Route path="timeline" element={<PaymentTimeline />} />
             <Route path="people" element={<People />} />
             <Route path="bills" element={<Bills />} />
             <Route path="documents" element={<Documents />} />

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import {
-  BarChart3, Bot, CalendarDays, ChevronLeft, ChevronRight, CreditCard, FileText, FolderTree, Gauge, Gem, Home,
+  BarChart3, Bot, CalendarClock, CalendarDays, ChevronLeft, ChevronRight, CreditCard, FileText, FolderTree, Gauge, Gem, Home,
   Landmark, LayoutDashboard, Scale, MinusCircle, PiggyBank, PlusCircle, Repeat,
   Settings as SettingsIcon, ShoppingBag, ShoppingCart, Sparkles, StickyNote, Tags, Target, TrendingUp, Users, Wallet,
 } from 'lucide-react'
@@ -26,6 +26,7 @@ const NAV = [
   { to: '/expense-report', label: 'Expense Report', icon: ShoppingBag },
   { to: '/budget', label: 'Budget', icon: Gauge },
   { to: '/loans', label: 'Loans & EMIs', icon: Landmark },
+  { to: '/timeline', label: 'Payment Timeline', icon: CalendarClock },
   { to: '/forecast', label: 'Financial Forecast', icon: TrendingUp },
   { to: '/assets', label: 'Assets & Properties', icon: Gem },
   { to: '/profit-loss', label: 'Monthly P&L', icon: Scale },

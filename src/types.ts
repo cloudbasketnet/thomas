@@ -102,6 +102,14 @@ export interface BudgetCategory {
   subcategoryName?: string
   /** When false, transactions never auto-post to this budget's spend. */
   autoMatch?: boolean
+  /** Must be paid (rent, fees) rather than spending you can trim (dining out). */
+  mandatory?: boolean
+  /**
+   * Day of the month it falls due, 1-31. A day rather than a date because a
+   * budget repeats: a fixed date would only be right once. In a month shorter
+   * than the day, it falls on the last day.
+   */
+  dueDay?: number
   /** Roll unspent amount into next month's budget. Not yet applied automatically. */
   rollover?: boolean
   /** Percent of budget at which a warning appears. */

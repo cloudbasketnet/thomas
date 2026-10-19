@@ -1,7 +1,7 @@
-import type { Account, Bill, Currency, IncomeSource, Loan, Note, Transaction, Transfer } from '@/types'
+import type { Account, Bill, BudgetCategory, Currency, IncomeSource, Loan, Note, Transaction, Transfer } from '@/types'
 import { TODAY, monthKey, toBase } from '@/lib/format'
 import { addDays, duePayments } from '@/lib/dashboard'
-import { availableMoney } from '@/lib/selectors'
+import { availableMoney, budgetsWithSpend } from '@/lib/selectors'
 import { incomeForMonth } from '@/lib/income'
 import { installmentStatus } from '@/lib/schedules'
 
@@ -12,20 +12,18 @@ import { installmentStatus } from '@/lib/schedules'
 // Pure, so every figure on the page is checked in scripts/test-timeline.mjs.
 // ============================================================================
 
-export type TimelineKind = 'loan' | 'bill' | 'subscription' | 'instalment' | 'expense' | 'income'
-
 /**
- * Bills and subscriptions are one record type in this app, so the split is by
- * category. Anything recurring that is not one of these reads as a bill.
+ * Four kinds, matching how the app itself is organised: instalment plans live
+ * under Loans & EMIs, and bills and subscriptions are one record type, so each
+ * pair is counted together rather than split by rules the rest of the app
+ * does not know about.
  */
-const SUBSCRIPTION_CATEGORIES = ['Software', 'Entertainment']
-const isSubscription = (b: Bill) => SUBSCRIPTION_CATEGORIES.includes(b.category)
+export type TimelineKind = 'loan' | 'bill' | 'budget' | 'expense' | 'income'
 
 export const KIND_LABEL: Record<TimelineKind, string> = {
-  loan: 'Loan (EMI)',
-  bill: 'Bill',
-  subscription: 'Subscription',
-  instalment: 'Instalment',
+  loan: 'Loans & EMIs',
+  bill: 'Bills & Subscriptions',
+  budget: 'Mandatory budgets',
   expense: 'Expense',
   income: 'Income',
 }
@@ -33,8 +31,7 @@ export const KIND_LABEL: Record<TimelineKind, string> = {
 export const KIND_COLOR: Record<TimelineKind, string> = {
   loan: '#f59e0b',
   bill: '#8b5cf6',
-  subscription: '#2563eb',
-  instalment: '#ec4899',
+  budget: '#0891b2',
   expense: '#ef4444',
   income: '#10b981',
 }
@@ -72,8 +69,7 @@ const r0 = (n: number) => Math.round(n)
 const emptyByKind = (): Record<TimelineKind, { total: number; count: number }> => ({
   loan: { total: 0, count: 0 },
   bill: { total: 0, count: 0 },
-  subscription: { total: 0, count: 0 },
-  instalment: { total: 0, count: 0 },
+  budget: { total: 0, count: 0 },
   expense: { total: 0, count: 0 },
   income: { total: 0, count: 0 },
 })
@@ -90,6 +86,8 @@ export interface TimelineInput {
   bills: Bill[]
   notes: Note[]
   incomeSources: IncomeSource[]
+  /** Only mandatory monthly budgets with a due day reach the timeline. */
+  budgets?: BudgetCategory[]
   txnExists: (id: string) => boolean
   month?: string
   today?: string
@@ -144,9 +142,8 @@ export function paymentTimeline(i: TimelineInput): Timeline {
   const due = duePayments(i.loans, i.bills, i.notes, i.txnExists, 400, from)
   for (const d of due) {
     if (d.dueDate < from || d.dueDate > to) continue
-    const bill = d.kind === 'bill' ? i.bills.find((b) => `bill_${b.id}` === d.id) : undefined
-    const kind: TimelineKind =
-      d.kind === 'loan' ? 'loan' : d.kind === 'installment' ? 'instalment' : bill && isSubscription(bill) ? 'subscription' : 'bill'
+    // An instalment is an EMI in all but name — it sits under Loans & EMIs.
+    const kind: TimelineKind = d.kind === 'bill' ? 'bill' : 'loan'
     rows.push({
       id: d.id,
       date: d.dueDate,
@@ -158,6 +155,32 @@ export function paymentTimeline(i: TimelineInput): Timeline {
       balanceAfter: 0,
       status: d.dueDate < today ? 'Overdue' : 'Upcoming',
     })
+  }
+
+  // Mandatory budgets with a due day. Only what is still unspent goes on the
+  // line: anything already spent against the budget is in the records above,
+  // so charging the full limit here would take that money out twice. A past
+  // month is history and its records are complete, so it adds nothing here.
+  if (month >= monthKey(today)) {
+    const lastDay = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate()
+    for (const b of budgetsWithSpend(i.txns, i.budgets ?? [], month)) {
+      if (!b.mandatory || !b.dueDay || (b.period ?? 'Monthly') !== 'Monthly') continue
+      const remaining = b.budgetBase - b.spent
+      if (remaining <= 0) continue
+      const date = `${month}-${String(Math.min(b.dueDay, lastDay)).padStart(2, '0')}`
+      rows.push({
+        id: `budget_${b.id}`,
+        date,
+        description: b.name,
+        kind: 'budget',
+        delta: -remaining,
+        amount: remaining,
+        // Base figures are held in AED internally; money() converts for display.
+        currency: 'AED',
+        balanceAfter: 0,
+        status: date < today ? 'Overdue' : 'Upcoming',
+      })
+    }
   }
 
   rows.sort((a, b) => a.date.localeCompare(b.date) || a.description.localeCompare(b.description))
@@ -318,8 +341,7 @@ export interface TimelinePoint {
   out: number
   loan: number
   bill: number
-  subscription: number
-  instalment: number
+  budget: number
   expense: number
 }
 
@@ -327,7 +349,7 @@ export interface TimelinePoint {
 export function timelinePoints(t: Timeline): TimelinePoint[] {
   const byDate = new Map<string, TimelineRow[]>()
   for (const r of t.rows) byDate.set(r.date, [...(byDate.get(r.date) ?? []), r])
-  const empty = { loan: 0, bill: 0, subscription: 0, instalment: 0, expense: 0 }
+  const empty = { loan: 0, bill: 0, budget: 0, expense: 0 }
   const points: TimelinePoint[] = []
   let running = t.startingBalance
   points.push({ date: `${t.month}-01`, balance: r0(running), out: 0, ...empty })

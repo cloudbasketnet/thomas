@@ -64,10 +64,22 @@ test('each kind is counted separately', () => {
   assert.equal(t.byKind.bill.total, 500)
 })
 
-test('a software or entertainment bill is a subscription, not a bill', () => {
-  const t = build({ bills: [bill('POS licence', 500, '2026-10-28', 'Software')] })
-  assert.equal(t.byKind.subscription.total, 500)
-  assert.equal(t.byKind.bill.total, 0)
+test('a subscription counts with the bills — they are one record type', () => {
+  const t = build({ bills: [bill('POS licence', 500, '2026-10-28', 'Software'), bill('Water', 200, '2026-10-12')] })
+  assert.equal(t.byKind.bill.total, 700)
+  assert.equal(t.byKind.bill.count, 2)
+})
+
+test('an instalment counts under Loans & EMIs', () => {
+  const t = build({
+    loans: [],
+    notes: [{
+      id: 'n', title: 'School fees', category: 'Loan', dueDate: '2026-10-15', status: 'Pending', done: false,
+      schedule: [{ id: 'i1', label: 'Term 1', dueDate: '2026-10-15', amount: 1200, currency: 'AED' }],
+    }],
+  })
+  assert.equal(t.byKind.loan.total, 1200)
+  assert.equal(t.rows.find((r) => r.description === 'Term 1').kind, 'loan')
 })
 
 test('the lowest point is reported, not just the closing balance', () => {
@@ -208,4 +220,64 @@ console.log(`\n${n} passed`)
     assert.equal(pts[0].balance, 11000)
   })
   console.log(`\n${k} chart checks passed`)
+}
+
+{
+  let k = 0
+  const t3 = (name, fn) => { try { fn(); k++; console.log('  ok  ', name) } catch (e) { console.error('  FAIL', name, '\n      ', e.stack.split('\n').slice(0, 3).join('\n       ')); process.exitCode = 1 } }
+  const budget = (over = {}) => ({
+    id: 'rent', name: 'Rent', icon: '', budget: 4000, currency: 'AED', spent: 0, color: '',
+    period: 'Monthly', categoryName: 'Rent', autoMatch: true, mandatory: true, dueDay: 5, ...over,
+  })
+  const withBudget = (over = {}, extra = {}) => build({ loans: [], bills: [], budgets: [budget(over)], ...extra })
+
+  console.log('\nMandatory budgets')
+  t3('a mandatory budget with a due day lands on that day, in full', () => {
+    const t = withBudget()
+    const row = t.rows.find((r) => r.kind === 'budget')
+    assert.equal(row.date, '2026-10-05')
+    assert.equal(row.amount, 4000)
+    assert.equal(t.byKind.budget.total, 4000)
+  })
+  t3('only what is still unspent is charged — spent money is already in the records', () => {
+    const t = withBudget({}, {
+      txns: [{ id: 'paid', type: 'expense', date: '2026-10-01', description: 'Part of rent', category: 'Rent', accountId: 'bank', amount: 1500, currency: 'AED' }],
+    })
+    assert.equal(t.rows.find((r) => r.kind === 'budget').amount, 2500)
+    // 15,000 is today's balance, already after the 1,500 went out on the 1st,
+    // so the month opened on 16,500. Charged once each: 16,500 - 1,500 - 2,500.
+    assert.equal(t.startingBalance, 16500)
+    assert.equal(t.endBalance, 12500, 'the 1,500 is not taken out twice')
+  })
+  t3('a fully spent budget adds nothing', () => {
+    const t = withBudget({ budget: 1000 }, {
+      txns: [{ id: 'paid', type: 'expense', date: '2026-10-01', description: 'Rent', category: 'Rent', accountId: 'bank', amount: 1000, currency: 'AED' }],
+    })
+    assert.equal(t.byKind.budget.count, 0)
+  })
+  t3('an optional budget never reaches the timeline', () => {
+    assert.equal(withBudget({ mandatory: false }).byKind.budget.count, 0)
+  })
+  t3('a mandatory budget without a due day is left out, not guessed at', () => {
+    assert.equal(withBudget({ dueDay: undefined }).byKind.budget.count, 0)
+  })
+  t3('day 31 in a 30-day month falls on the 30th', () => {
+    const t = paymentTimeline({
+      accounts: [account('bank', 'bank', 15000)], txns: [], transfers: [], loans: [], bills: [], notes: [], incomeSources: [],
+      budgets: [budget({ dueDay: 31 })], txnExists: () => false, month: '2026-11', today: TODAY,
+    })
+    assert.equal(t.rows[0].date, '2026-11-30')
+  })
+  t3('a past month adds nothing — its records are complete', () => {
+    const t = paymentTimeline({
+      accounts: [account('bank', 'bank', 15000)], txns: [], transfers: [], loans: [], bills: [], notes: [], incomeSources: [],
+      budgets: [budget()], txnExists: () => false, month: '2026-09', today: TODAY,
+    })
+    assert.equal(t.byKind.budget.count, 0)
+  })
+  t3('the simulator sees it: room on the 10th accounts for rent on the 5th', () => {
+    const t = withBudget()
+    assert.equal(simulateDebit(t, 0, '2026-10-10').affordable, 15000 - 4000 - buffer(15000))
+  })
+  console.log(`\n${k} mandatory budget checks passed`)
 }

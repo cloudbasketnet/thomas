@@ -59,6 +59,11 @@ export const V7_COLUMNS: Partial<Record<Collection, string[]>> = {
   dreams: ['category', 'start_date'],
 }
 
+/** Columns added by 0022 — stripped from writes until it has run. */
+export const V8_COLUMNS: Partial<Record<Collection, string[]>> = {
+  budgets: ['mandatory', 'due_day'],
+}
+
 /** Columns added to older tables by 0015 — stripped from writes until it has run. */
 export const V2_COLUMNS: Partial<Record<Collection, string[]>> = {
   accounts: ['opening_balance', 'opening_confirmed', 'credit_limit', 'bank_style'],
@@ -171,11 +176,13 @@ export const MAPPERS: {
       id: b.id, name: b.name, icon: b.icon, budget: b.budget, currency: b.currency ?? 'AED', spent: b.spent, color: b.color,
       period: b.period ?? 'Monthly', category_name: b.categoryName ?? null, subcategory_name: b.subcategoryName ?? null,
       auto_match: b.autoMatch ?? true, rollover: b.rollover ?? false, alert_threshold: b.alertThreshold ?? 80,
+      mandatory: b.mandatory ?? false, due_day: b.dueDay ?? null,
     }),
     from: (r): BudgetCategory => ({
       id: r.id, name: r.name, icon: r.icon, budget: num(r.budget), currency: r.currency ?? 'AED', spent: num(r.spent), color: r.color,
       period: r.period ?? 'Monthly', categoryName: r.category_name ?? undefined, subcategoryName: r.subcategory_name ?? undefined,
       autoMatch: r.auto_match ?? true, rollover: Boolean(r.rollover), alertThreshold: r.alert_threshold == null ? 80 : num(r.alert_threshold),
+      mandatory: Boolean(r.mandatory), dueDay: r.due_day == null ? undefined : num(r.due_day),
     }),
   },
 

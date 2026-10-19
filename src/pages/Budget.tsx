@@ -28,6 +28,13 @@ const ICON_OPTIONS = [
 const PERIODS: BudgetCategory['period'][] = ['Monthly', 'Weekly', 'Yearly']
 const THRESHOLDS = [50, 60, 70, 80, 90, 100]
 
+/** 1st, 2nd, 3rd, 4th … 21st, 22nd, 23rd, 31st. */
+const ordinal = (n: number) => {
+  const tens = n % 100
+  const suffix = tens >= 11 && tens <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
+  return `${n}${suffix}`
+}
+
 const blankForm = (currency: Currency = 'AED') => ({
   name: '',
   icon: ICON_OPTIONS[0].icon,
@@ -40,6 +47,8 @@ const blankForm = (currency: Currency = 'AED') => ({
   autoMatch: true,
   rollover: false,
   alertThreshold: 80,
+  mandatory: false,
+  dueDay: '',
 })
 
 function CategoryBudgets() {
@@ -109,6 +118,8 @@ function CategoryBudgets() {
       autoMatch: b.autoMatch ?? true,
       rollover: b.rollover ?? false,
       alertThreshold: b.alertThreshold ?? 80,
+      mandatory: b.mandatory ?? false,
+      dueDay: b.dueDay ? String(b.dueDay) : '',
     })
     setNewSub(null)
     setModal(true)
@@ -126,6 +137,8 @@ function CategoryBudgets() {
       autoMatch: form.autoMatch,
       rollover: form.rollover,
       alertThreshold: form.alertThreshold,
+      mandatory: form.mandatory,
+      dueDay: Number(form.dueDay) || undefined,
       budget: Number(form.budget),
       currency: form.currency,
     }
@@ -284,7 +297,11 @@ function CategoryBudgets() {
               <tbody className="divide-y divide-[#f1f5f9]">
                 {budgets.map((b) => (
                   <tr key={b.id} className="row-hover">
-                    <td className="td font-semibold text-slate-800"><span className="mr-2">{b.icon}</span>{b.name}</td>
+                    <td className="td font-semibold text-slate-800">
+                      <span className="mr-2">{b.icon}</span>{b.name}
+                      {b.mandatory && <span className="chip bg-rose-50 text-rose-700 ml-2">Mandatory</span>}
+                      {b.dueDay && <span className="chip bg-slate-100 text-slate-500 ml-1.5">Due {ordinal(b.dueDay)}</span>}
+                    </td>
                     <td className="td text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <span className="text-[10px] font-semibold text-slate-400">{b.currency ?? 'AED'}</span>
@@ -494,6 +511,43 @@ function CategoryBudgets() {
                 If no match is found, the transaction will be marked Uncategorised for your review.
               </p>
             )}
+          </div>
+
+          <div>
+            <p className="text-[12.5px] font-bold text-slate-800 mb-3">Payment</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Is this spending">
+                <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1">
+                  {([[true, 'Mandatory'], [false, 'Optional']] as const).map(([v, l]) => (
+                    <button
+                      key={l}
+                      type="button"
+                      onClick={() => setForm({ ...form, mandatory: v })}
+                      className={`h-9 rounded-lg text-[12.5px] font-semibold cursor-pointer transition ${
+                        form.mandatory === v ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Due on">
+                <select className="input" value={form.dueDay} onChange={(e) => setForm({ ...form, dueDay: e.target.value })}>
+                  <option value="">No due date</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>{ordinal(d)} of every month</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <p className="mt-2 text-[11.5px] text-slate-500">
+              {form.mandatory
+                ? form.dueDay
+                  ? `Must be paid by the ${ordinal(Number(form.dueDay))}. Whatever is still unspent shows on the Payment Timeline that day, and the simulator keeps it back.`
+                  : 'Must be paid. Give it a due day to put it on the Payment Timeline.'
+                : 'Spending you can cut back on if money is tight.'}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

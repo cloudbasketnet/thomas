@@ -20,7 +20,7 @@ const shiftMonth = (key: string, by: number) => {
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 /** The outflow lines drawn under the balance, in the order the legend lists them. */
-const SERIES = ['expense', 'loan', 'bill', 'subscription', 'instalment'] as const
+const SERIES = ['expense', 'loan', 'bill', 'budget'] as const
 type ChartKind = 'all' | (typeof SERIES)[number]
 
 function Legend({ color, text }: { color: string; text: string }) {
@@ -55,8 +55,7 @@ const FILTERS: { key: 'all' | TimelineKind; label: string }[] = [
   { key: 'all', label: 'All categories' },
   { key: 'loan', label: KIND_LABEL.loan },
   { key: 'bill', label: KIND_LABEL.bill },
-  { key: 'subscription', label: KIND_LABEL.subscription },
-  { key: 'instalment', label: KIND_LABEL.instalment },
+  { key: 'budget', label: KIND_LABEL.budget },
   { key: 'expense', label: KIND_LABEL.expense },
   { key: 'income', label: KIND_LABEL.income },
 ]
@@ -69,6 +68,7 @@ export default function PaymentTimeline() {
   const bills = useStore((s) => s.bills)
   const notes = useStore((s) => s.notes)
   const incomeSources = useStore((s) => s.incomeSources)
+  const budgets = useStore((s) => s.budgets)
 
   const [month, setMonth] = useState(CURRENT_MONTH)
   const [filter, setFilter] = useState<'all' | TimelineKind>('all')
@@ -80,11 +80,11 @@ export default function PaymentTimeline() {
   const timeline = useMemo(
     () =>
       paymentTimeline({
-        accounts, txns: transactions, transfers, loans, bills, notes, incomeSources,
+        accounts, txns: transactions, transfers, loans, bills, notes, incomeSources, budgets,
         txnExists: (id) => txnIds.has(id),
         month,
       }),
-    [accounts, transactions, transfers, loans, bills, notes, incomeSources, txnIds, month],
+    [accounts, transactions, transfers, loans, bills, notes, incomeSources, budgets, txnIds, month],
   )
 
   const points = useMemo(() => timelinePoints(timeline), [timeline])
@@ -210,7 +210,7 @@ export default function PaymentTimeline() {
             <Empty text="Nothing recorded or committed in this month yet." />
           ) : (
             <ResponsiveContainer width="100%" height={320}>
-              <ComposedChart data={chart} margin={{ top: 34, right: 28, bottom: 0, left: 4 }}>
+              <ComposedChart data={chart} margin={{ top: 34, right: 52, bottom: 0, left: 4 }}>
                 <defs>
                   <linearGradient id="balanceFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10b981" stopOpacity={0.26} />
@@ -219,7 +219,7 @@ export default function PaymentTimeline() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => money(v)} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={86} tickFormatter={(v) => money(v)} />
                 <Tooltip
                   formatter={(v: number, name: string) => [money(v), name === 'balance' ? 'Cash balance' : KIND_LABEL[name as TimelineKind] ?? name]}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e9eef8', fontSize: 12 }}
@@ -312,7 +312,7 @@ export default function PaymentTimeline() {
       <Card>
         <CardHead title="Where the month goes" sub="Each kind of payment against the month's total outflow" />
         <div className="px-5 pb-5 space-y-3">
-          {(['loan', 'bill', 'subscription', 'instalment', 'expense'] as TimelineKind[])
+          {(['loan', 'bill', 'budget', 'expense'] as TimelineKind[])
             .filter((k) => timeline.byKind[k].count > 0)
             .map((k) => (
               <div key={k}>
@@ -329,7 +329,7 @@ export default function PaymentTimeline() {
           {timeline.outflow === 0 && <Empty text="Nothing going out this month." />}
           <p className="text-[11px] text-slate-400 pt-1 leading-relaxed">
             <CalendarClock size={11} className="inline -mt-0.5 mr-1" />
-            Paid rows come from your records; upcoming ones from loan EMIs, bills and instalment schedules. A purchase
+            Paid rows come from your records; upcoming ones from loan EMIs, instalment plans, bills, subscriptions and the unspent part of mandatory budgets. A purchase
             on a credit card raises what you owe without moving cash, so it is not on this line —
             <CreditCard size={11} className="inline -mt-0.5 mx-1" />
             it appears when the card is paid.

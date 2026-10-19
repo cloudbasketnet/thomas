@@ -69,6 +69,7 @@ interface State {
   schemaV5: boolean
   schemaV6: boolean
   schemaV7: boolean
+  schemaV8: boolean
   /**
    * Have the schema probes actually run against the database this session?
    * Until they have, every schemaV* flag is just its default of false, which
@@ -449,10 +450,11 @@ export const useStore = create<State>()(
       schemaV5: false,
       schemaV6: false,
       schemaV7: false,
+      schemaV8: false,
       schemaChecked: false,
       ownerId: null,
       membership: null,
-      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, schemaV6: c.schemaV6, schemaV7: c.schemaV7, schemaChecked: true, ownerId: c.ownerId, membership: c.membership }),
+      setContext: (c) => set({ schemaV2: c.schemaV2, schemaV3: c.schemaV3, schemaV4: c.schemaV4, schemaV5: c.schemaV5, schemaV6: c.schemaV6, schemaV7: c.schemaV7, schemaV8: c.schemaV8, schemaChecked: true, ownerId: c.ownerId, membership: c.membership }),
 
       setSession: (userId, userEmail) => set({ userId, userEmail }),
       hydrate: (data) => {
@@ -1089,10 +1091,10 @@ export const useStore = create<State>()(
       partialize: (s) => {
         const {
           userId, userEmail, syncing, syncError, lastSynced, analysing, analysisError,
-          schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaV7, schemaChecked, ownerId, membership, ...data
+          schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaV7, schemaV8, schemaChecked, ownerId, membership, ...data
         } = s
         void userId; void userEmail; void syncing; void syncError; void lastSynced
-        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void schemaV6; void schemaV7; void schemaChecked; void ownerId; void membership
+        void analysing; void analysisError; void schemaV2; void schemaV3; void schemaV4; void schemaV5; void schemaV6; void schemaV7; void schemaV8; void schemaChecked; void ownerId; void membership
         return data
       },
     },

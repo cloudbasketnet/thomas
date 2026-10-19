@@ -311,17 +311,42 @@ export function simulateDebit(t: Timeline, amount: number, date: string): Simula
   }
 }
 
-/** Running balance per day, for the chart. */
-export function timelinePoints(t: Timeline) {
+/** One point per day that moved: the running balance, and what left under each kind. */
+export interface TimelinePoint {
+  date: string
+  balance: number
+  out: number
+  loan: number
+  bill: number
+  subscription: number
+  instalment: number
+  expense: number
+}
+
+/** Running balance per day, for the chart, with each kind's outflow broken out. */
+export function timelinePoints(t: Timeline): TimelinePoint[] {
   const byDate = new Map<string, TimelineRow[]>()
   for (const r of t.rows) byDate.set(r.date, [...(byDate.get(r.date) ?? []), r])
-  const points: { date: string; balance: number; out: number }[] = []
+  const empty = { loan: 0, bill: 0, subscription: 0, instalment: 0, expense: 0 }
+  const points: TimelinePoint[] = []
   let running = t.startingBalance
-  points.push({ date: `${t.month}-01`, balance: r0(running), out: 0 })
+  points.push({ date: `${t.month}-01`, balance: r0(running), out: 0, ...empty })
   for (const date of [...byDate.keys()].sort()) {
     const rows = byDate.get(date)!
-    for (const r of rows) running += r.delta
-    points.push({ date, balance: r0(running), out: r0(rows.reduce((n, r) => n + (r.delta < 0 ? -r.delta : 0), 0)) })
+    const kinds = { ...empty }
+    let out = 0
+    for (const r of rows) {
+      running += r.delta
+      if (r.delta < 0) {
+        out -= r.delta
+        if (r.kind !== 'income') kinds[r.kind] -= r.delta
+      }
+    }
+    const point = { date, balance: r0(running), out: r0(out), ...kinds }
+    for (const k of Object.keys(empty) as (keyof typeof empty)[]) point[k] = r0(point[k])
+    // The first of the month may already carry movements; merge rather than duplicate it.
+    if (points.length && points[points.length - 1].date === date) points[points.length - 1] = point
+    else points.push(point)
   }
   return points
 }

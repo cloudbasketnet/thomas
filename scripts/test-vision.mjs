@@ -146,3 +146,86 @@ test('durations read as the cards show them', () => {
 })
 
 console.log(`\n${n} passed`)
+
+// ---------------------------------------------------------------------------
+import { planTiming, planYear } from '../src/lib/vision.ts'
+let m = 0
+const check = (name, fn) => {
+  try { fn(); m++; console.log('  ok  ', name) } catch (e) { console.error('  FAIL', name, '\n      ', e.stack.split('\n').slice(0, 3).join('\n       ')); process.exitCode = 1 }
+}
+const plan = (progress, startDate, targetDate) => ({ progress, startDate, targetDate })
+const TODAY = '2026-10-19'
+
+console.log('\nPlans: progress against the calendar')
+
+check('on pace is On Track', () => {
+  // 1 Jan to 31 Dec: 291 of 364 days gone on 19 Oct is 80%.
+  assert.equal(planTiming(plan(80, '2026-01-01', '2026-12-31'), TODAY).status, 'On Track')
+})
+
+check('ahead of the calendar is On Track', () => {
+  assert.equal(planTiming(plan(95, '2026-01-01', '2026-12-31'), TODAY).status, 'On Track')
+})
+
+check('a little behind is In Progress', () => {
+  assert.equal(planTiming(plan(68, '2026-01-01', '2026-12-31'), TODAY).status, 'In Progress')
+})
+
+check('far behind is Needs Attention', () => {
+  // 35% done with 80% of the year gone.
+  assert.equal(planTiming(plan(35, '2026-01-01', '2026-12-31'), TODAY).status, 'Needs Attention')
+})
+
+check('4% done two years out, just begun, is On Track', () => {
+  const t = planTiming(plan(4, '2026-09-21', '2028-10-18'), TODAY)
+  assert.equal(t.status, 'On Track')
+  assert.equal(t.done, 28)
+})
+
+check('not started yet is Planned', () => {
+  assert.equal(planTiming(plan(0, '2027-01-01', '2027-12-31'), TODAY).status, 'Planned')
+})
+
+check('past the end date and unfinished is Needs Attention', () => {
+  const t = planTiming(plan(60, '2026-01-01', '2026-06-30'), TODAY)
+  assert.equal(t.status, 'Needs Attention')
+  assert.equal(t.left, 0)
+  assert.match(t.explain, /end date has passed/)
+})
+
+check('100% is Completed whatever the calendar says', () => {
+  assert.equal(planTiming(plan(100, '2026-01-01', '2026-12-31'), TODAY).status, 'Completed')
+  assert.equal(planTiming(plan(100, '2026-01-01', '2026-03-01'), TODAY).status, 'Completed')
+})
+
+check('days left and days done are counted', () => {
+  const t = planTiming(plan(50, '2026-01-01', '2026-12-31'), TODAY)
+  assert.equal(t.total, 364)
+  assert.equal(t.done, 291)
+  assert.equal(t.left, 73)
+})
+
+check('without a start date there is no window, so it does not guess', () => {
+  const started = planTiming(plan(30, undefined, '2027-12-31'), TODAY)
+  assert.equal(started.status, 'In Progress')
+  assert.equal(started.expected, null)
+  assert.equal(planTiming(plan(0, undefined, undefined), TODAY).status, 'Planned')
+})
+
+check('progress outside 0-100 is clamped', () => {
+  assert.equal(planTiming(plan(150, '2026-01-01', '2026-12-31'), TODAY).progress, 100)
+  assert.equal(planTiming(plan(-5, '2026-01-01', '2026-12-31'), TODAY).progress, 0)
+})
+
+check('an end date before the start is not treated as a window', () => {
+  const t = planTiming(plan(10, '2026-12-31', '2026-01-01'), TODAY)
+  assert.equal(t.expected, null)
+})
+
+check('plans are grouped by the year they land in', () => {
+  assert.equal(planYear({ startDate: '2026-01-01', targetDate: '2028-10-18' }), '2028')
+  assert.equal(planYear({ startDate: '2027-03-01' }), '2027')
+  assert.equal(planYear({}), 'Someday')
+})
+
+console.log(`\n${m} plan checks passed`)

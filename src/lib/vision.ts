@@ -131,3 +131,69 @@ export function dreamProgress(dreams: Dream[]) {
   const sum = sortedDreams(dreams).reduce((a, d) => a + d.progress, 0)
   return Math.round(sum / dreams.length)
 }
+
+// ---------------------------------------------------------------------------
+// Plans: progress measured against how much of the plan's time has passed.
+// ---------------------------------------------------------------------------
+
+export type PlanStatus = 'Completed' | 'On Track' | 'In Progress' | 'Needs Attention' | 'Planned'
+
+export const STATUS_TONE: Record<PlanStatus, { color: string; bg: string }> = {
+  Completed: { color: '#059669', bg: '#ecfdf5' },
+  'On Track': { color: '#16a34a', bg: '#f0fdf4' },
+  'In Progress': { color: '#d97706', bg: '#fffbeb' },
+  'Needs Attention': { color: '#dc2626', bg: '#fef2f2' },
+  Planned: { color: '#64748b', bg: '#f8fafc' },
+}
+
+const dayNo = (iso: string) => Math.floor(new Date(`${iso}T00:00:00Z`).getTime() / 86_400_000)
+
+/**
+ * Where a plan stands. Progress alone says little — 35% is excellent a month
+ * in and alarming a month from the end — so it is read against the share of
+ * the plan's window that has already gone:
+ *
+ *   on or ahead of the calendar, or no more than 5 points behind  → On Track
+ *   up to 20 points behind                                        → In Progress
+ *   further behind, or past the end date unfinished               → Needs Attention
+ *
+ * Not started yet is Planned; 100% is Completed whatever the calendar says.
+ * Without both dates there is no window to measure against, so it falls back
+ * to whether anything has happened yet.
+ */
+export function planTiming(d: Pick<Dream, 'progress' | 'startDate' | 'targetDate'>, today: string) {
+  const progress = Math.min(100, Math.max(0, Math.round(d.progress || 0)))
+  const hasWindow = Boolean(d.startDate && d.targetDate && d.targetDate > d.startDate!)
+
+  const total = hasWindow ? dayNo(d.targetDate!) - dayNo(d.startDate!) : 0
+  const done = hasWindow ? Math.min(total, Math.max(0, dayNo(today) - dayNo(d.startDate!))) : 0
+  const left = d.targetDate ? Math.max(0, dayNo(d.targetDate) - dayNo(today)) : null
+  const expected = hasWindow ? Math.round((done / total) * 100) : null
+
+  let status: PlanStatus
+  if (progress >= 100) status = 'Completed'
+  else if (d.startDate && today < d.startDate) status = 'Planned'
+  else if (d.targetDate && today > d.targetDate) status = 'Needs Attention'
+  else if (expected === null) status = progress > 0 ? 'In Progress' : 'Planned'
+  else {
+    const behind = expected - progress
+    status = behind <= 5 ? 'On Track' : behind <= 20 ? 'In Progress' : 'Needs Attention'
+  }
+
+  const explain: Record<PlanStatus, string> = {
+    Completed: 'Done — well done.',
+    'On Track': expected !== null ? `${progress}% done with ${expected}% of the time gone. Keep the pace.` : 'Moving along.',
+    'In Progress': expected !== null ? `${progress}% done with ${expected}% of the time gone — a little behind.` : 'Under way.',
+    'Needs Attention':
+      d.targetDate && today > d.targetDate
+        ? `The end date has passed at ${progress}%. Move the date or push to finish.`
+        : `${progress}% done with ${expected}% of the time gone — falling behind.`,
+    Planned: d.startDate && today < d.startDate ? `Starts ${d.startDate}.` : 'Not started yet.',
+  }
+
+  return { progress, status, total, done, left, expected, explain: explain[status] }
+}
+
+/** The year a plan lands in — the board is grouped by when things should be done. */
+export const planYear = (d: Pick<Dream, 'targetDate' | 'startDate'>) =>
+  (d.targetDate ?? d.startDate ?? '').slice(0, 4) || 'Someday'

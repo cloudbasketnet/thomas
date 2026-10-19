@@ -1,5 +1,5 @@
 import { db } from '@/lib/supabase'
-import { MAPPERS, TABLES, V2_COLUMNS, V2_TABLES, V3_COLUMNS, V3_TABLES, V4_COLUMNS, V5_TABLES, V6_COLUMNS, settingsMapper, type Collection } from '@/lib/mappers'
+import { MAPPERS, TABLES, V2_COLUMNS, V2_TABLES, V3_COLUMNS, V3_TABLES, V4_COLUMNS, V5_TABLES, V6_COLUMNS, V7_COLUMNS, settingsMapper, type Collection } from '@/lib/mappers'
 import type { HouseholdMember, Settings, VerificationAttempt } from '@/types'
 import { SETTINGS } from '@/data/seed'
 
@@ -50,6 +50,7 @@ export interface SessionContext {
   schemaV4: boolean
   schemaV5: boolean
   schemaV6: boolean
+  schemaV7: boolean
   ownerId: string
   /** Set when the signed-in user is a household member rather than the owner. */
   membership: HouseholdMember | null
@@ -57,8 +58,8 @@ export interface SessionContext {
   inactive: boolean
 }
 
-const ctx: { schemaV2: boolean; schemaV3: boolean; schemaV4: boolean; schemaV5: boolean; schemaV6: boolean; ownerId: string | null } =
-  { schemaV2: false, schemaV3: false, schemaV4: false, schemaV5: false, schemaV6: false, ownerId: null }
+const ctx: { schemaV2: boolean; schemaV3: boolean; schemaV4: boolean; schemaV5: boolean; schemaV6: boolean; schemaV7: boolean; ownerId: string | null } =
+  { schemaV2: false, schemaV3: false, schemaV4: false, schemaV5: false, schemaV6: false, schemaV7: false, ownerId: null }
 
 export const isSchemaV2 = () => ctx.schemaV2
 export const isSchemaV3 = () => ctx.schemaV3
@@ -77,6 +78,7 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
   let schemaV4 = v >= 18
   let schemaV5 = v >= 19
   let schemaV6 = v >= 20
+  let schemaV7 = v >= 21
   // The version row can be hidden (row level security with no policy, or a stale API
   // cache). A second, independent probe: if a v2/v3/v4-only table/column answers, the migration ran.
   if (!schemaV2) {
@@ -99,17 +101,22 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
     const probe = await client.from('bills').select('currency').limit(1)
     schemaV6 = !probe.error
   }
+  if (!schemaV7) {
+    const probe = await client.from('dreams').select('category').limit(1)
+    schemaV7 = !probe.error
+  }
   ctx.schemaV2 = schemaV2
   ctx.schemaV3 = schemaV3
   ctx.schemaV4 = schemaV4
   ctx.schemaV5 = schemaV5
   ctx.schemaV6 = schemaV6
+  ctx.schemaV7 = schemaV7
   ctx.ownerId = userId
 
-  if (!schemaV2) return { schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, ownerId: userId, membership: null, inactive: false }
+  if (!schemaV2) return { schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaV7, ownerId: userId, membership: null, inactive: false }
 
   const mem = await client.from('household_members').select('*').eq('member_id', userId).maybeSingle()
-  if (mem.error || !mem.data) return { schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, ownerId: userId, membership: null, inactive: false }
+  if (mem.error || !mem.data) return { schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaV7, ownerId: userId, membership: null, inactive: false }
 
   const m = mem.data
   ctx.ownerId = m.owner_id
@@ -119,6 +126,7 @@ export async function resolveSession(userId: string): Promise<SessionContext> {
     schemaV4,
     schemaV5,
     schemaV6,
+    schemaV7,
     ownerId: m.owner_id,
     inactive: !m.active,
     membership: {
@@ -141,6 +149,7 @@ function shapeRow(collection: Collection, row: Record<string, any>) {
   if (!ctx.schemaV3) for (const col of V3_COLUMNS[collection] ?? []) delete out[col]
   if (!ctx.schemaV4) for (const col of V4_COLUMNS[collection] ?? []) delete out[col]
   if (!ctx.schemaV6) for (const col of V6_COLUMNS[collection] ?? []) delete out[col]
+  if (!ctx.schemaV7) for (const col of V7_COLUMNS[collection] ?? []) delete out[col]
   return out
 }
 
@@ -334,6 +343,7 @@ export async function schemaReport(): Promise<{ version: number | null; versionD
     { file: '0018_goal_currency.sql', adds: "a savings goal's own currency", table: 'goals', column: 'currency' },
     { file: '0019_vision_board.sql', adds: 'dreams, words, schedule, activity log', table: 'dreams', column: 'id' },
     { file: '0020_bill_currency.sql', adds: "a bill's own currency", table: 'bills', column: 'currency' },
+    { file: '0021_plan_fields.sql', adds: 'a category and start date on each plan', table: 'dreams', column: 'category' },
   ]
 
   const checks: SchemaCheck[] = []

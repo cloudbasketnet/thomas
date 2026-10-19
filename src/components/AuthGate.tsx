@@ -23,6 +23,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const schemaV4 = useStore((s) => s.schemaV4)
   const schemaV5 = useStore((s) => s.schemaV5)
   const schemaV6 = useStore((s) => s.schemaV6)
+  const schemaV7 = useStore((s) => s.schemaV7)
   const schemaChecked = useStore((s) => s.schemaChecked)
   const storageFull = useStore((s) => s.storageFull)
   const [notice, setNotice] = useState<string | null>(null)
@@ -206,7 +207,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
        * Phones get the full width; from sm the stack hugs the right edge.
        */}
       <div className="fixed bottom-4 right-4 left-4 sm:left-auto z-50 flex flex-col items-stretch sm:items-end gap-2 pointer-events-none">
-        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} schemaV6={schemaV6} checked={schemaChecked} />
+        <MigrationNotice supabase={hasSupabase} schemaV2={schemaV2} schemaV3={schemaV3} schemaV4={schemaV4} schemaV5={schemaV5} schemaV6={schemaV6} schemaV7={schemaV7} checked={schemaChecked} />
         {storageFull && (
           <div className="pointer-events-auto card px-4 py-3 w-full sm:max-w-sm bg-amber-50 border-amber-200 flex items-start gap-2.5">
             <AlertCircle size={16} className="text-amber-600 mt-0.5 shrink-0" />
@@ -249,7 +250,7 @@ const NOTICE_KEY = 'cb_migration_notice_collapsed'
  * together — a database that is up to date shows nothing at all.
  */
 function MigrationNotice({
-  supabase, schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, checked,
+  supabase, schemaV2, schemaV3, schemaV4, schemaV5, schemaV6, schemaV7, checked,
 }: {
   supabase: boolean
   schemaV2: boolean
@@ -257,6 +258,7 @@ function MigrationNotice({
   schemaV4: boolean
   schemaV5: boolean
   schemaV6: boolean
+  schemaV7: boolean
   checked: boolean
 }) {
   const [open, setOpen] = useState(() => sessionStorage.getItem(NOTICE_KEY) !== '1')
@@ -269,7 +271,7 @@ function MigrationNotice({
    * explains that; this one keeps quiet.
    */
   if (!supabase || !checked) return null
-  if (schemaV4 && schemaV5 && schemaV6) return null
+  if (schemaV4 && schemaV5 && schemaV6 && schemaV7) return null
 
   const pending: { file: string; adds: string }[] = []
   if (!schemaV2) pending.push({ file: '0015_cloudbasket360_v2.sql', adds: 'opening balances, receipts, assets, smart budget, family users' })
@@ -282,6 +284,7 @@ function MigrationNotice({
   }
   if (!schemaV5) pending.push({ file: '0019_vision_board.sql', adds: 'dreams, words, daily schedule and the activity log' })
   if (!schemaV6) pending.push({ file: '0020_bill_currency.sql', adds: "a bill's own currency" })
+  if (!schemaV7) pending.push({ file: '0021_plan_fields.sql', adds: 'a category and start date on each plan' })
 
   if (!open)
     return (

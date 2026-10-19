@@ -190,3 +190,22 @@ test('same-day payments collapse into one point', () => {
 })
 
 console.log(`\n${n} passed`)
+
+{
+  let k = 0
+  const t2 = (name, fn) => { try { fn(); k++; console.log('  ok  ', name) } catch (e) { console.error('  FAIL', name, '\n      ', e.stack.split('\n').slice(0, 3).join('\n       ')); process.exitCode = 1 } }
+  console.log('\nThe chart, by kind')
+  t2('each point carries what left under each kind that day', () => {
+    const pts = timelinePoints(build())
+    const emi = pts.find((p) => p.date === '2026-10-02')
+    assert.equal(emi.loan, 3000)
+    assert.equal(emi.bill, 0)
+    assert.equal(pts.find((p) => p.date === '2026-10-24').bill, 500)
+  })
+  t2('a movement on the 1st does not produce two points for the 1st', () => {
+    const pts = timelinePoints(build({ bills: [bill('Rent', 4000, '2026-10-01')] }))
+    assert.equal(pts.filter((p) => p.date === '2026-10-01').length, 1)
+    assert.equal(pts[0].balance, 11000)
+  })
+  console.log(`\n${k} chart checks passed`)
+}

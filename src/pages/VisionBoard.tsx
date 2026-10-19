@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
-  BarChart3, Bot, CalendarDays, ChevronLeft, ChevronRight, FileText, Image as ImageIcon, Pencil, Plus, Settings as SettingsIcon,
-  Sparkles, StickyNote, Target, Trash2,
+  AlertCircle, BarChart3, Bot, Briefcase, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight, Clock, Coins, Dumbbell,
+  FileText, GraduationCap, Heart, House, Image as ImageIcon, MoreHorizontal, Pencil, Plane, Plus, Search,
+  Settings as SettingsIcon, Sparkles, StickyNote, Target, Trash2, User,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
@@ -10,10 +11,11 @@ import { Modal, Field } from '@/components/ui/Modal'
 import { readFileAsDataUrl } from '@/lib/gemini'
 import { resizeImage } from '@/lib/image'
 import {
-  ACTIVITY, ACTIVITY_KINDS, blockMinutes, dayAnalysis, dreamProgress, duration, monthAnalysis, sortedDreams, sortedSchedule,
+  ACTIVITY, ACTIVITY_KINDS, STATUS_TONE, blockMinutes, dayAnalysis, dreamProgress, duration, monthAnalysis, planTiming, planYear,
+  sortedDreams, sortedSchedule,
 } from '@/lib/vision'
 import { TODAY, fmtDate } from '@/lib/format'
-import type { ActivityKind, Dream, ScheduleBlock, VisionWord } from '@/types'
+import type { ActivityKind, Dream, PlanCategory, ScheduleBlock, VisionWord } from '@/types'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const monthLabel = (key: string) => `${MONTH_NAMES[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`
@@ -32,6 +34,8 @@ export default function VisionBoard() {
   } = useStore()
 
   const [month, setMonth] = useState(TODAY.slice(0, 7))
+  const [tab, setTab] = useState<'plans' | 'routine'>('plans')
+  const [query, setQuery] = useState('')
   const [dreamModal, setDreamModal] = useState<Dream | 'new' | null>(null)
   const [wordModal, setWordModal] = useState<VisionWord | 'new' | null>(null)
   const [blockModal, setBlockModal] = useState<ScheduleBlock | 'new' | null>(null)
@@ -48,14 +52,40 @@ export default function VisionBoard() {
     <div className="space-y-5 max-w-[1600px]">
       <PageHeader
         title="Vision Board"
-        subtitle="A better me, a brighter tomorrow — what you are working towards, and where the hours go."
+        subtitle="Turn your dreams into daily progress."
         actions={
-          <button className="btn-primary" onClick={() => setDreamModal('new')}>
-            <Plus size={15} /> Add Dream
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {tab === 'plans' && (
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input className="input h-10 w-56 pl-9" placeholder="Search plans…" value={query} onChange={(e) => setQuery(e.target.value)} />
+              </div>
+            )}
+            <button className="btn-primary" onClick={() => setDreamModal('new')}>
+              <Plus size={15} /> Add Plan
+            </button>
+          </div>
         }
       />
 
+      <div className="flex gap-1.5">
+        {([['plans', 'Plans'], ['routine', 'Daily routine']] as const).map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`chip cursor-pointer transition ${tab === k ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'plans' && (
+        <PlansView dreams={board} query={query} onEdit={(d) => setDreamModal(d)} onAdd={() => setDreamModal('new')} />
+      )}
+
+      {tab === 'routine' && (
+        <>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Dreams" value={String(dreams.length)} icon={<Target size={20} />} tint="#ec4899"
           footer={<div><div className="text-[10px] text-slate-400 mb-1">{overall}% average progress</div><Progress value={overall} max={100} color="#ec4899" height={5} /></div>} />
@@ -65,55 +95,6 @@ export default function VisionBoard() {
           footer={<span className="text-slate-400">{today.gymPct}% of the day</span>} />
         <StatCard label="Gym This Month" value={duration(mo.gymMinutes)} icon={<BarChart3 size={20} />} tint="#2563eb"
           footer={<span className="text-slate-400">Avg {mo.gymHoursPerDay} h a day</span>} />
-      </div>
-
-      {/* ---- dreams + words ---- */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
-        <Card className="lg:col-span-8">
-          <CardHead title="🎯 My Dreams" sub="Tap a card to edit it" right={<button className="btn-soft" onClick={() => setDreamModal('new')}><Plus size={13} /> Add Dream</button>} />
-          <div className="px-5 pb-5">
-            {board.length === 0 ? (
-              <Empty text="No dreams yet — add the first thing you are working towards." />
-            ) : (
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
-                {board.map((d) => (
-                  <button key={d.id} onClick={() => setDreamModal(d)} className="group text-left rounded-2xl overflow-hidden border border-[#eef2f8] hover:border-brand-200 transition cursor-pointer">
-                    <div className="h-24 grid place-items-center text-[34px] relative" style={{ background: `${d.color}1f` }}>
-                      {d.image ? <img src={d.image} alt="" className="absolute inset-0 h-full w-full object-cover" /> : d.emoji}
-                    </div>
-                    <div className="p-2.5">
-                      <p className="text-[12.5px] font-bold text-slate-800 truncate">{d.title}</p>
-                      <p className="text-[10.5px] text-slate-400 truncate">{d.note}</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Progress value={d.progress} max={100} color={d.color} height={6} />
-                        <span className="text-[10.5px] font-bold text-slate-500 w-8 text-right tabular-nums">{d.progress}%</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card className="lg:col-span-4">
-          <CardHead title="⭐ Important Words" right={<button className="btn-soft" onClick={() => setWordModal('new')}><Plus size={13} /> Add</button>} />
-          <div className="px-5 pb-5">
-            {visionWords.length === 0 ? (
-              <Empty text="No words yet." />
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {[...visionWords].sort((a, b) => a.order - b.order).map((w) => (
-                  <button key={w.id} onClick={() => setWordModal(w)} className="rounded-2xl p-3 text-center cursor-pointer transition hover:-translate-y-0.5" style={{ background: `${w.color}1a` }}>
-                    <div className="text-[20px] leading-none">{w.emoji}</div>
-                    <p className="text-[12px] font-bold text-slate-800 mt-1.5 truncate">{w.word}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{w.note}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </Card>
       </div>
 
       {/* ---- schedule + today + month ---- */}
@@ -188,22 +169,24 @@ export default function VisionBoard() {
         </Card>
       </div>
 
-      {/* ---- progress + tools + quick add ---- */}
+      {/* ---- words + tools + quick add ---- */}
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
         <Card className="lg:col-span-5">
-          <CardHead title="🎯 Progress Towards Dreams" sub={`${overall}% across ${dreams.length} dream${dreams.length === 1 ? '' : 's'}`} />
-          <div className="px-5 pb-5 space-y-3">
-            {board.length === 0 && <Empty text="Nothing to track yet." />}
-            {board.map((d) => (
-              <div key={d.id}>
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className="text-[14px]">{d.emoji}</span>
-                  <span className="flex-1 text-[12.5px] font-semibold text-slate-700 truncate">{d.title}</span>
-                  <span className="text-[11px] font-bold text-slate-500 tabular-nums">{d.progress}%</span>
-                </div>
-                <Progress value={d.progress} max={100} color={d.color} height={7} />
+          <CardHead title="⭐ Important Words" right={<button className="btn-soft" onClick={() => setWordModal('new')}><Plus size={13} /> Add</button>} />
+          <div className="px-5 pb-5">
+            {visionWords.length === 0 ? (
+              <Empty text="No words yet." />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {[...visionWords].sort((a, b) => a.order - b.order).map((w) => (
+                  <button key={w.id} onClick={() => setWordModal(w)} className="rounded-2xl p-3 text-center cursor-pointer transition hover:-translate-y-0.5" style={{ background: `${w.color}1a` }}>
+                    <div className="text-[20px] leading-none">{w.emoji}</div>
+                    <p className="text-[12px] font-bold text-slate-800 mt-1.5 truncate">{w.word}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{w.note}</p>
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         </Card>
 
@@ -255,6 +238,9 @@ export default function VisionBoard() {
           </div>
         </Card>
       </div>
+
+        </>
+      )}
 
       <DreamModal
         value={dreamModal}
@@ -326,7 +312,7 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
   onRemove: () => void
 }) {
   const editing = value && value !== 'new' ? value : null
-  const [form, setForm] = useState({ title: '', note: '', emoji: '⭐', color: PALETTE[0], progress: 0, image: '', targetDate: '' })
+  const [form, setForm] = useState({ title: '', note: '', emoji: '⭐', color: PALETTE[0], progress: 0, image: '', targetDate: '', startDate: '', category: 'Personal' as PlanCategory })
   const [seeded, setSeeded] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
   const key = editing?.id ?? 'new'
@@ -334,6 +320,7 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
     setSeeded(key)
     setForm({
       title: editing?.title ?? '', note: editing?.note ?? '', emoji: editing?.emoji ?? '⭐',
+      startDate: editing?.startDate ?? '', category: editing?.category ?? 'Personal',
       color: editing?.color ?? PALETTE[0], progress: editing?.progress ?? 0,
       image: editing?.image ?? '', targetDate: editing?.targetDate ?? '',
     })
@@ -361,29 +348,37 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
     <Modal
       open
       onClose={onClose}
-      title={editing ? 'Edit dream' : 'Add a dream'}
+      title={editing ? 'Edit plan' : 'Add a plan'}
       subtitle="A picture, a word about why, and how far along you are"
       footer={
         <>
           {editing && <button className="btn-ghost text-rose-600 mr-auto" onClick={onRemove}><Trash2 size={13} /> Delete</button>}
           <button className="btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={() => form.title.trim() && onSave({ ...form, title: form.title.trim(), image: form.image || undefined, targetDate: form.targetDate || undefined })}>
-            {editing ? 'Save' : 'Add dream'}
+          <button className="btn-primary" onClick={() => form.title.trim() && onSave({ ...form, title: form.title.trim(), image: form.image || undefined, targetDate: form.targetDate || undefined, startDate: form.startDate || undefined })}>
+            {editing ? 'Save' : 'Add plan'}
           </button>
         </>
       }
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Dream" className="sm:col-span-2">
-          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Family Travel" autoFocus />
+        <Field label="Plan" className="sm:col-span-2">
+          <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Open new branch" autoFocus />
         </Field>
-        <Field label="Why it matters" className="sm:col-span-2">
-          <input className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Explore the world together" />
+        <Field label="Category">
+          <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as PlanCategory })}>
+            {PLAN_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{c.key}</option>)}
+          </select>
+        </Field>
+        <Field label="Start date">
+          <input className="input" type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
+        </Field>
+        <Field label="Where it stands (shown as the conclusion)" className="sm:col-span-2">
+          <input className="input" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="e.g. Construction under way, finishing setup" />
         </Field>
         <Field label="Emoji (used when there is no photo)">
           <input className="input" value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} maxLength={4} />
         </Field>
-        <Field label="Target date (optional)">
+        <Field label="End date">
           <input className="input" type="date" value={form.targetDate} onChange={(e) => setForm({ ...form, targetDate: e.target.value })} />
         </Field>
         <Field label={`Progress — ${form.progress}%`} className="sm:col-span-2">
@@ -497,5 +492,185 @@ function BlockModal({ value, onClose, onSave, onRemove }: {
         </Field>
       </div>
     </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Plans view
+// ---------------------------------------------------------------------------
+
+const PLAN_CATEGORIES: { key: PlanCategory; icon: typeof User; color: string }[] = [
+  { key: 'Personal', icon: User, color: '#2563eb' },
+  { key: 'Family', icon: Heart, color: '#ef4444' },
+  { key: 'Business', icon: Briefcase, color: '#b45309' },
+  { key: 'Education', icon: GraduationCap, color: '#7c3aed' },
+  { key: 'Health', icon: Dumbbell, color: '#f97316' },
+  { key: 'Travel', icon: Plane, color: '#0ea5e9' },
+  { key: 'Finance', icon: Coins, color: '#eab308' },
+  { key: 'Home', icon: House, color: '#0891b2' },
+]
+const categoryColor = (c?: PlanCategory) => PLAN_CATEGORIES.find((x) => x.key === c)?.color ?? '#64748b'
+
+const STATUS_ICON = {
+  Completed: CheckCircle2,
+  'On Track': CheckCircle2,
+  'In Progress': Clock,
+  'Needs Attention': AlertCircle,
+  Planned: MoreHorizontal,
+} as const
+
+/** The plan's picture, or its emoji on its colour when there is none. */
+function PlanImage({ d, className }: { d: Dream; className: string }) {
+  return (
+    <div className={`relative overflow-hidden grid place-items-center ${className}`} style={{ background: `${d.color}1f` }}>
+      {d.image ? <img src={d.image} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" /> : <span className="text-[30px]">{d.emoji}</span>}
+    </div>
+  )
+}
+
+function PlansView({ dreams, query, onEdit, onAdd }: {
+  dreams: Dream[]
+  query: string
+  onEdit: (d: Dream) => void
+  onAdd: () => void
+}) {
+  const [category, setCategory] = useState<'All' | PlanCategory>('All')
+
+  const shown = dreams.filter(
+    (d) =>
+      (category === 'All' || d.category === category) &&
+      (!query.trim() || `${d.title} ${d.note} ${d.category ?? ''}`.toLowerCase().includes(query.trim().toLowerCase())),
+  )
+
+  // Grouped by the year each plan lands in, soonest first.
+  const years = [...new Set(shown.map(planYear))].sort()
+  const byYear = (y: string) =>
+    shown
+      .filter((d) => planYear(d) === y)
+      .sort((a, b) => (a.targetDate ?? '9999').localeCompare(b.targetDate ?? '9999') || a.order - b.order)
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        <button
+          onClick={() => setCategory('All')}
+          className={`h-10 px-5 rounded-xl text-[13px] font-semibold cursor-pointer transition ${category === 'All' ? 'bg-brand-600 text-white' : 'bg-white border border-[#e8edf5] text-slate-600 hover:bg-slate-50'}`}
+        >
+          All
+        </button>
+        {PLAN_CATEGORIES.map(({ key, icon: Icon, color }) => (
+          <button
+            key={key}
+            onClick={() => setCategory(key)}
+            className={`h-10 px-3.5 rounded-xl text-[13px] font-semibold inline-flex items-center gap-2 cursor-pointer transition ${category === key ? 'bg-brand-600 text-white' : 'bg-white border border-[#e8edf5] text-slate-600 hover:bg-slate-50'}`}
+          >
+            <Icon size={16} style={{ color: category === key ? '#fff' : color }} /> {key}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+        {/* ---- the plans, year by year ---- */}
+        <Card>
+          {shown.length === 0 ? (
+            <div className="py-10">
+              <Empty text={dreams.length ? 'No plans match that.' : 'No plans yet — add the first thing you are working towards.'} />
+              {!dreams.length && <div className="text-center"><button className="btn-primary" onClick={onAdd}><Plus size={14} /> Add Plan</button></div>}
+            </div>
+          ) : (
+            <div className="p-3 sm:p-4 space-y-1">
+              {years.map((y) => (
+                <div key={y} className="relative pl-14 sm:pl-16">
+                  {/* the year rail */}
+                  <span className="absolute left-[22px] sm:left-[26px] top-3 bottom-0 w-0.5 bg-brand-200" />
+                  <span className="absolute left-0 top-3 h-7 px-2.5 rounded-full bg-brand-600 text-white text-[12px] font-bold grid place-items-center">{y}</span>
+
+                  <div className="space-y-2.5 py-2">
+                    {byYear(y).map((d) => {
+                      const t = planTiming(d, TODAY)
+                      const tone = STATUS_TONE[t.status]
+                      const Icon = STATUS_ICON[t.status]
+                      return (
+                        <div key={d.id} className="relative">
+                          <span className="absolute -left-[37px] sm:-left-[41px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-brand-500 ring-4 ring-white" />
+                          <div className="grid gap-3 grid-cols-[84px_minmax(0,1fr)] md:grid-cols-[96px_minmax(0,1.3fr)_64px_auto_minmax(0,1fr)] items-center rounded-2xl border border-[#eef2f8] bg-white p-2.5">
+                            <PlanImage d={d} className="h-20 md:h-[84px] rounded-xl" />
+
+                            <div className="min-w-0">
+                              <p className="text-[13.5px] font-bold text-slate-800 truncate">{d.title}</p>
+                              {d.category && (
+                                <span className="chip mt-1" style={{ background: `${categoryColor(d.category)}1a`, color: categoryColor(d.category) }}>{d.category}</span>
+                              )}
+                              <p className="text-[11px] text-slate-500 mt-1.5 inline-flex items-center gap-1 flex-wrap">
+                                <CalendarDays size={11} />
+                                {d.startDate ? fmtDate(d.startDate) : 'No start'} → {d.targetDate ? fmtDate(d.targetDate) : 'No end'}
+                              </p>
+                              <div className="mt-1.5"><Progress value={t.progress} max={100} color="#10b981" height={5} /></div>
+                              {t.total > 0 && <p className="text-[10.5px] text-slate-400 mt-1">{t.done} of {t.total} days completed</p>}
+                            </div>
+
+                            <div className="hidden md:block"><Ring value={t.progress} color="#10b981" /></div>
+
+                            <span
+                              className="hidden md:inline-flex justify-self-start rounded-full px-3 py-1 text-[11.5px] font-bold whitespace-nowrap"
+                              style={{ background: tone.bg, color: tone.color }}
+                            >
+                              {t.left === null ? 'No end date' : t.left === 0 ? 'Due' : `${t.left} days left`}
+                            </span>
+
+                            <button
+                              onClick={() => onEdit(d)}
+                              className="col-span-2 md:col-span-1 text-left rounded-xl px-3 py-2.5 flex items-start gap-2.5 cursor-pointer transition hover:brightness-95"
+                              style={{ background: tone.bg }}
+                              title="Edit this plan"
+                            >
+                              <Icon size={18} style={{ color: tone.color }} className="shrink-0 mt-0.5" />
+                              <span className="min-w-0">
+                                <span className="block text-[12.5px] font-bold" style={{ color: tone.color }}>
+                                  {t.status}
+                                  <span className="md:hidden font-semibold text-slate-500"> · {t.progress}%{t.left !== null ? ` · ${t.left} days left` : ''}</span>
+                                </span>
+                                <span className="block text-[11px] text-slate-600 leading-snug mt-0.5">{d.note || t.explain}</span>
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* ---- the board ---- */}
+        <Card>
+          <CardHead
+            title="Vision Board"
+            sub="See your dreams. Stay motivated."
+            right={<button className="btn-ghost h-9" onClick={onAdd}><ImageIcon size={14} /> Add Image</button>}
+          />
+          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
+            {shown.map((d) => {
+              const t = planTiming(d, TODAY)
+              return (
+                <button key={d.id} onClick={() => onEdit(d)} className="text-left rounded-xl overflow-hidden border border-[#eef2f8] bg-white cursor-pointer transition hover:-translate-y-0.5">
+                  <PlanImage d={d} className="h-24" />
+                  <div className="p-2">
+                    <p className="text-[11.5px] font-bold text-slate-800 truncate">{d.title}</p>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <Progress value={t.progress} max={100} color={d.color} height={5} />
+                      <span className="text-[10px] font-bold tabular-nums" style={{ color: d.color }}>{t.progress}%</span>
+                    </div>
+                    {d.targetDate && <p className="text-[9.5px] text-slate-400 mt-1 truncate">{d.startDate ? `${fmtDate(d.startDate)} → ` : ''}{fmtDate(d.targetDate)}</p>}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
   )
 }

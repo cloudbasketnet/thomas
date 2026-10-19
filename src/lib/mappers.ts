@@ -54,6 +54,11 @@ export const V6_COLUMNS: Partial<Record<Collection, string[]>> = {
   bills: ['currency'],
 }
 
+/** Columns added by 0021 — stripped from writes until it has run. */
+export const V7_COLUMNS: Partial<Record<Collection, string[]>> = {
+  dreams: ['category', 'start_date'],
+}
+
 /** Columns added to older tables by 0015 — stripped from writes until it has run. */
 export const V2_COLUMNS: Partial<Record<Collection, string[]>> = {
   accounts: ['opening_balance', 'opening_confirmed', 'credit_limit', 'bank_style'],
@@ -260,10 +265,12 @@ export const MAPPERS: {
     to: (d: Dream) => ({
       id: d.id, title: d.title, note: d.note, image: d.image ?? null, emoji: d.emoji, color: d.color,
       progress: d.progress, target_date: d.targetDate ?? null, order: d.order,
+      category: d.category ?? null, start_date: d.startDate ?? null,
     }),
     from: (r): Dream => ({
       id: r.id, title: r.title, note: r.note ?? '', image: r.image ?? undefined, emoji: r.emoji ?? '⭐',
       color: r.color ?? '#2563eb', progress: num(r.progress), targetDate: r.target_date ?? undefined, order: num(r.order),
+      category: r.category ?? undefined, startDate: r.start_date ?? undefined,
     }),
   },
 

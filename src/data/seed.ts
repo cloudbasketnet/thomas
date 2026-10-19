@@ -56,10 +56,10 @@ export const PRICE_WATCH: PriceWatch[] = []
 // ---------------------------------------------------------------------------
 
 export const DREAMS: Dream[] = [
-  { id: 'dr1', title: 'Family Travel', note: 'Explore the world together', emoji: '🏝️', color: '#0ea5e9', progress: 70, order: 0 },
-  { id: 'dr2', title: 'Dream House', note: 'Our future home', emoji: '🏡', color: '#10b981', progress: 45, order: 1 },
-  { id: 'dr3', title: 'Grow My Business', note: 'Multiple successful ventures', emoji: '📈', color: '#f59e0b', progress: 60, order: 2 },
-  { id: 'dr4', title: 'Healthy & Fit', note: 'Stronger, healthier me', emoji: '💪', color: '#ef4444', progress: 50, order: 3 },
+  { id: 'dr1', title: 'Family Travel', note: '', category: 'Travel', startDate: '2026-01-01', targetDate: '2026-12-31', emoji: '🏝️', color: '#0ea5e9', progress: 70, order: 0 },
+  { id: 'dr2', title: 'Dream House', note: '', category: 'Home', startDate: '2027-01-01', targetDate: '2028-12-31', emoji: '🏡', color: '#10b981', progress: 0, order: 1 },
+  { id: 'dr3', title: 'Grow My Business', note: '', category: 'Business', startDate: '2026-01-01', targetDate: '2026-12-31', emoji: '📈', color: '#f59e0b', progress: 80, order: 2 },
+  { id: 'dr4', title: 'Healthy & Fit', note: '', category: 'Health', startDate: '2026-01-01', targetDate: '2026-12-31', emoji: '💪', color: '#ef4444', progress: 35, order: 3 },
 ]
 
 export const VISION_WORDS: VisionWord[] = [

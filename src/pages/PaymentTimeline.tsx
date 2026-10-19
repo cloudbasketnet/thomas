@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
-  AlertTriangle, Calculator, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, FileText,
-  Landmark, ReceiptText, TrendingDown, Wallet,
+  AlertTriangle, Calculator, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, CreditCard, TrendingDown, Wallet,
 } from 'lucide-react'
 import {
-  Area, AreaChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, CartesianGrid, ComposedChart, LabelList, Line, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { useStore } from '@/store/useStore'
 import { Badge, Card, CardHead, Empty, PageHeader, Progress, StatCard } from '@/components/ui/Primitives'
@@ -19,6 +18,37 @@ const shiftMonth = (key: string, by: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+/** The outflow lines drawn under the balance, in the order the legend lists them. */
+const SERIES = ['expense', 'loan', 'bill', 'subscription', 'instalment'] as const
+type ChartKind = 'all' | (typeof SERIES)[number]
+
+function Legend({ color, text }: { color: string; text: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-slate-600">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} /> {text}
+    </span>
+  )
+}
+
+/**
+ * A value pinned above its point, as a filled tag. Zero is left unlabelled, so
+ * an outflow line only speaks on the days something actually left.
+ */
+function Pill({ x, y, value, fill }: { x?: number | string; y?: number | string; value?: number | string; fill: string }) {
+  const v = Number(value)
+  if (!v || x == null || y == null) return null
+  const text = money(v)
+  const w = text.length * 6.4 + 16
+  const cx = Number(x)
+  const top = Number(y) - 30
+  return (
+    <g>
+      <rect x={cx - w / 2} y={top} width={w} height={20} rx={7} fill={fill} />
+      <text x={cx} y={top + 14} textAnchor="middle" fontSize={11} fontWeight={700} fill="#fff">{text}</text>
+    </g>
+  )
+}
 const weekday = (iso: string) => DAYS[new Date(`${iso}T00:00:00`).getDay()]
 
 const FILTERS: { key: 'all' | TimelineKind; label: string }[] = [
@@ -42,6 +72,7 @@ export default function PaymentTimeline() {
 
   const [month, setMonth] = useState(CURRENT_MONTH)
   const [filter, setFilter] = useState<'all' | TimelineKind>('all')
+  const [chartKind, setChartKind] = useState<ChartKind>('all')
   const [testAmount, setTestAmount] = useState('')
   const [testDate, setTestDate] = useState(TODAY)
 
@@ -84,19 +115,13 @@ export default function PaymentTimeline() {
         }
       />
 
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <StatCard label="Starting Balance" value={money(timeline.startingBalance)} icon={<Wallet size={20} />} tint="#3b82f6"
           footer={<span className="text-slate-400">What {MONTH_NAMES[Number(month.slice(5, 7)) - 1]} opened with</span>} />
         <StatCard label="Expected Inflow" value={money(timeline.inflow)} icon={<CheckCircle2 size={20} />} tint="#10b981"
           footer={<span className="text-slate-400">Received and planned</span>} />
         <StatCard label="Total Outflow" value={money(timeline.outflow)} icon={<TrendingDown size={20} />} tint="#ef4444"
           footer={<span className="text-slate-400">{timeline.rows.filter((r) => r.delta < 0).length} payments</span>} />
-        <StatCard label={KIND_LABEL.loan} value={money(timeline.byKind.loan.total)} icon={<Landmark size={20} />} tint={KIND_COLOR.loan}
-          footer={<span className="text-slate-400">{timeline.byKind.loan.count} payments</span>} />
-        <StatCard label="Bills" value={money(timeline.byKind.bill.total)} icon={<ReceiptText size={20} />} tint={KIND_COLOR.bill}
-          footer={<span className="text-slate-400">{timeline.byKind.bill.count} payments</span>} />
-        <StatCard label="Subscriptions" value={money(timeline.byKind.subscription.total)} icon={<FileText size={20} />} tint={KIND_COLOR.subscription}
-          footer={<span className="text-slate-400">{timeline.byKind.subscription.count} payments</span>} />
       </div>
 
       {/* ---- simulator ---- */}
@@ -165,32 +190,52 @@ export default function PaymentTimeline() {
       {/* ---- chart ---- */}
       <Card>
         <CardHead
-          title={`Cash Balance Through ${label(month)}`}
+          title={`Cash Flow Timeline (${label(month)})`}
           sub={`Lowest point ${money(timeline.lowest.balance)} on ${fmtDate(timeline.lowest.date)}`}
+          right={
+            <select className="input h-9 w-40 text-[12px]" value={chartKind} onChange={(e) => setChartKind(e.target.value as ChartKind)}>
+              <option value="all">All categories</option>
+              {SERIES.map((k) => <option key={k} value={k}>{KIND_LABEL[k]}</option>)}
+            </select>
+          }
         />
-        <div className="px-3 pb-4">
+        <div className="px-5 -mt-1 pb-1 flex flex-wrap gap-x-4 gap-y-1">
+          <Legend color="#10b981" text="Cash balance" />
+          {SERIES.filter((k) => chartKind === 'all' || chartKind === k).map((k) => (
+            <Legend key={k} color={KIND_COLOR[k]} text={KIND_LABEL[k]} />
+          ))}
+        </div>
+        <div className="px-2 pb-4">
           {points.length <= 1 ? (
             <Empty text="Nothing recorded or committed in this month yet." />
           ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <AreaChart data={chart} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+            <ResponsiveContainer width="100%" height={320}>
+              <ComposedChart data={chart} margin={{ top: 34, right: 28, bottom: 0, left: 4 }}>
                 <defs>
                   <linearGradient id="balanceFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.28} />
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.26} />
                     <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e9eef8" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={64} tickFormatter={(v) => money(v)} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={70} tickFormatter={(v) => money(v)} />
                 <Tooltip
-                  formatter={(v: number, name) => [money(v), name === 'balance' ? 'Cash balance' : 'Paid out']}
-                  labelFormatter={(l) => String(l)}
+                  formatter={(v: number, name: string) => [money(v), name === 'balance' ? 'Cash balance' : KIND_LABEL[name as TimelineKind] ?? name]}
                   contentStyle={{ borderRadius: 12, border: '1px solid #e9eef8', fontSize: 12 }}
                 />
-                <Area type="monotone" dataKey="balance" name="balance" stroke="#10b981" strokeWidth={2.5} fill="url(#balanceFill)" isAnimationActive={false} />
-                <Line type="monotone" dataKey="out" name="out" stroke="#ef4444" strokeWidth={2} dot={false} isAnimationActive={false} />
-              </AreaChart>
+                <Area type="monotone" dataKey="balance" stroke="#10b981" strokeWidth={2.5} fill="url(#balanceFill)" isAnimationActive={false}
+                  dot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}>
+                  {/* Every value on the line itself, not hidden behind a hover. */}
+                  <LabelList dataKey="balance" content={(p: any) => <Pill {...p} fill="#10b981" />} />
+                </Area>
+                {SERIES.filter((k) => chartKind === 'all' || chartKind === k).map((k) => (
+                  <Line key={k} type="monotone" dataKey={k} stroke={KIND_COLOR[k]} strokeWidth={2} isAnimationActive={false}
+                    dot={(p: any) => (p.value > 0 ? <circle key={p.index} cx={p.cx} cy={p.cy} r={4} fill={KIND_COLOR[k]} stroke="#fff" strokeWidth={2} /> : <g key={p.index} />)}>
+                    <LabelList dataKey={k} content={(p: any) => <Pill {...p} fill={KIND_COLOR[k]} />} />
+                  </Line>
+                ))}
+              </ComposedChart>
             </ResponsiveContainer>
           )}
         </div>

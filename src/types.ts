@@ -656,11 +656,17 @@ export interface HouseholdMember {
 
 export type ActivityKind = 'gym' | 'sleep' | 'rest' | 'work' | 'personal' | 'family' | 'other'
 
-/** Something you are working towards, with a picture of it. */
+export type PlanCategory = 'Personal' | 'Family' | 'Business' | 'Education' | 'Health' | 'Travel' | 'Finance' | 'Home'
+
+/** Something you are working towards, with a picture of it — a plan on the Vision Board. */
 export interface Dream {
   id: string
   title: string
+  /** Where it stands, in your own words — the "conclusion" line on the board. */
   note: string
+  category?: PlanCategory
+  /** When the plan began. With targetDate it gives the time window progress is measured against. */
+  startDate?: string
   /** A photo, as a data URL or an https link. With none, the emoji stands in for it. */
   image?: string
   emoji: string

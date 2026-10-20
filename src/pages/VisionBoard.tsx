@@ -303,6 +303,22 @@ function DayBars({ days }: { days: { day: number; rest: number; gym: number }[] 
   )
 }
 
+/** Larger files are refused outright — reading one in can stall a phone. */
+const MAX_PHOTO_MB = 15
+/** Longest side a plan photo is stored at. Plenty for a thumbnail, small in storage. */
+const SAVED_EDGE = 640
+
+const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
+/** A data URL's real size: base64 carries 3 bytes in every 4 characters. */
+const kilobytes = (dataUrl: string) => `${Math.round(((dataUrl.length - dataUrl.indexOf(',') - 1) * 3) / 4 / 1024)} KB`
+const dimensions = (src: string) =>
+  new Promise<{ w: number; h: number }>((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight })
+    img.onerror = () => reject(new Error('That file could not be read as an image.'))
+    img.src = src
+  })
+
 const PALETTE = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#2563eb', '#64748b']
 
 function DreamModal({ value, onClose, onSave, onRemove }: {
@@ -315,9 +331,12 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
   const [form, setForm] = useState({ title: '', note: '', emoji: '⭐', color: PALETTE[0], progress: 0, image: '', targetDate: '', startDate: '', category: 'Personal' as PlanCategory })
   const [seeded, setSeeded] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
+  const [imageNote, setImageNote] = useState<string | null>(null)
   const key = editing?.id ?? 'new'
   if (value && seeded !== key) {
     setSeeded(key)
+    setImageNote(null)
+    setImageError(null)
     setForm({
       title: editing?.title ?? '', note: editing?.note ?? '', emoji: editing?.emoji ?? '⭐',
       startDate: editing?.startDate ?? '', category: editing?.category ?? 'Personal',
@@ -335,10 +354,17 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
   // already is.
   const pickImage = async (file?: File) => {
     if (!file) return
+    if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
+      setImageError(`That photo is ${megabytes(file.size)}. Please choose one under ${MAX_PHOTO_MB} MB.`)
+      return
+    }
     try {
-      const small = await resizeImage(await readFileAsDataUrl(file), 640)
+      const raw = await readFileAsDataUrl(file)
+      const [from, small] = await Promise.all([dimensions(raw), resizeImage(raw, SAVED_EDGE)])
+      const to = await dimensions(small)
       setForm((f) => ({ ...f, image: small }))
       setImageError(null)
+      setImageNote(`Saved at ${to.w} × ${to.h} px · ${kilobytes(small)} (from ${from.w} × ${from.h} px, ${megabytes(file.size)})`)
     } catch (e) {
       setImageError(e instanceof Error ? e.message : String(e))
     }
@@ -396,8 +422,14 @@ function DreamModal({ value, onClose, onSave, onRemove }: {
               <ImageIcon size={14} /> Choose
               <input type="file" accept="image/*" className="hidden" onChange={(e) => pickImage(e.target.files?.[0])} />
             </label>
-            {form.image && <button className="btn-ghost" onClick={() => setForm({ ...form, image: '' })}>Remove</button>}
+            {form.image && <button className="btn-ghost" onClick={() => { setForm({ ...form, image: '' }); setImageNote(null) }}>Remove</button>}
           </div>
+          <div className="mt-2 rounded-xl bg-slate-50 border border-[#eef2f8] px-3 py-2 text-[11.5px] text-slate-500 leading-relaxed">
+            <p><b className="text-slate-700">Best size:</b> landscape, 1280 × 960 px (4:3) or larger.</p>
+            <p><b className="text-slate-700">Accepted:</b> JPG, PNG, WebP or iPhone/iPad photos, up to {MAX_PHOTO_MB} MB.</p>
+            <p>It is scaled to {SAVED_EDGE} px on its longest side before saving, so it stays small on every device.</p>
+          </div>
+          {imageNote && !imageError && <p className="text-[11.5px] text-emerald-700 mt-1.5">{imageNote}</p>}
           {imageError && <p className="text-[11.5px] text-rose-600 mt-1.5">{imageError}</p>}
         </Field>
       </div>
@@ -569,7 +601,7 @@ function PlansView({ dreams, query, onEdit, onAdd }: {
         ))}
       </div>
 
-      <div className="grid gap-4 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+      <div>
         {/* ---- the plans, year by year ---- */}
         <Card>
           {shown.length === 0 ? (
@@ -644,32 +676,6 @@ function PlansView({ dreams, query, onEdit, onAdd }: {
           )}
         </Card>
 
-        {/* ---- the board ---- */}
-        <Card>
-          <CardHead
-            title="Vision Board"
-            sub="See your dreams. Stay motivated."
-            right={<button className="btn-ghost h-9" onClick={onAdd}><ImageIcon size={14} /> Add Image</button>}
-          />
-          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
-            {shown.map((d) => {
-              const t = planTiming(d, TODAY)
-              return (
-                <button key={d.id} onClick={() => onEdit(d)} className="text-left rounded-xl overflow-hidden border border-[#eef2f8] bg-white cursor-pointer transition hover:-translate-y-0.5">
-                  <PlanImage d={d} className="h-24" />
-                  <div className="p-2">
-                    <p className="text-[11.5px] font-bold text-slate-800 truncate">{d.title}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <Progress value={t.progress} max={100} color={d.color} height={5} />
-                      <span className="text-[10px] font-bold tabular-nums" style={{ color: d.color }}>{t.progress}%</span>
-                    </div>
-                    {d.targetDate && <p className="text-[9.5px] text-slate-400 mt-1 truncate">{d.startDate ? `${fmtDate(d.startDate)} → ` : ''}{fmtDate(d.targetDate)}</p>}
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </Card>
       </div>
     </div>
   )

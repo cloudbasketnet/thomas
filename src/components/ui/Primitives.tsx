@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
@@ -290,5 +290,41 @@ export function ColorChoice({
         aria-label="Colour hex code"
       />
     </div>
+  )
+}
+
+/**
+ * A list's sort order, remembered on this device so a list comes back the way
+ * it was left. Storage can be unavailable (private windows), so every access
+ * is guarded and the default always works.
+ */
+export function useSortChoice<K extends string>(storageKey: string, fallback: K, allowed: readonly K[]) {
+  const [value, setValue] = useState<K>(() => {
+    try {
+      const saved = localStorage.getItem(storageKey) as K | null
+      return saved && allowed.includes(saved) ? saved : fallback
+    } catch {
+      return fallback
+    }
+  })
+  const set = (next: K) => {
+    setValue(next)
+    try { localStorage.setItem(storageKey, next) } catch { /* not remembered, still applied */ }
+  }
+  return [value, set] as const
+}
+
+export function SortSelect<K extends string>({ value, onChange, options }: {
+  value: K
+  onChange: (k: K) => void
+  options: { key: K; label: string }[]
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 text-[12px] font-semibold text-slate-500">
+      Sort by
+      <select className="input h-9 w-auto pr-8 text-[12px]" value={value} onChange={(e) => onChange(e.target.value as K)}>
+        {options.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+      </select>
+    </label>
   )
 }

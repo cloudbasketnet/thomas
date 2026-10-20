@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { persist, type PersistStorage, type StorageValue } from 'zustand/middleware'
 import type {
   Account, ActivityEntry, AdvisorMessage, AdvisorPersona, Asset, AssetValuation, Bill, BudgetCategory, BudgetItem,
   Category, Doc, Dream, EmployeeMessage, Goal, GoldRate, HouseholdMember, IncomeSource, ItemAlias, Loan, Note, Person,
@@ -273,8 +273,20 @@ function fail(e: unknown) {
   useStore.setState({ syncError: msg })
 }
 
+/*
+ * Each successful write used to stamp lastSynced, and every screen subscribed to
+ * the whole store re-rendered for it. One edit fans out into several writes —
+ * the record, then each balance recompute() touches — so one tap could redraw
+ * the page five or six times. The timestamp only needs to be roughly right, so
+ * it moves at most every few seconds; clearing an error still happens at once.
+ */
+let lastStamp = 0
 function ok() {
-  useStore.setState({ syncError: null, lastSynced: new Date().toISOString() })
+  const now = Date.now()
+  const hadError = useStore.getState().syncError !== null
+  if (!hadError && now - lastStamp < 5000) return
+  lastStamp = now
+  useStore.setState({ syncError: null, lastSynced: new Date(now).toISOString() })
 }
 
 function push(collection: Collection, item: unknown) {
@@ -384,8 +396,17 @@ function unlinkBudgetPayment(txnId: string) {
  * through whatever triggered it, and the sign-in path reported it as "Cloud
  * sync unavailable", blaming the network for a full local cache.
  */
+/*
+ * The cache holds the state OBJECT and serialises it only when it is finally
+ * written. That matters: createJSONStorage, which this used to sit behind,
+ * called JSON.stringify on the entire dataset — photos included — the moment
+ * anything changed, on the main thread, and only then handed the string over.
+ * Deferring the write deferred the cheap part and left the expensive part
+ * running on every change, including the lastSynced tick after each cloud
+ * write. Now nothing is serialised until things have been quiet for a moment.
+ */
 const cache = (() => {
-  let pending: { key: string; value: string } | null = null
+  let pending: { key: string; value: StorageValue<unknown> } | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
 
   const write = () => {
@@ -393,7 +414,13 @@ const cache = (() => {
     const job = pending
     pending = null
     if (!job) return
-    idb.set(job.key, job.value).then(
+    let text: string
+    try {
+      text = JSON.stringify(job.value)
+    } catch {
+      return
+    }
+    idb.set(job.key, text).then(
       () => { if (useStore.getState().storageFull) useStore.setState({ storageFull: false }) },
       (e) => {
         if (isQuotaError(e)) {
@@ -410,9 +437,18 @@ const cache = (() => {
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') write() })
   }
 
+  const parse = (text: string | null) => {
+    if (text == null) return null
+    try {
+      return JSON.parse(text) as StorageValue<unknown>
+    } catch {
+      return null
+    }
+  }
+
   return {
-    getItem: (k: string) => (pending?.key === k ? pending.value : idb.get(k)),
-    setItem: (k: string, v: string) => {
+    getItem: (k: string) => (pending?.key === k ? pending.value : idb.get(k).then(parse)),
+    setItem: (k: string, v: StorageValue<unknown>) => {
       pending = { key: k, value: v }
       if (timer) clearTimeout(timer)
       timer = setTimeout(write, 800)
@@ -1074,7 +1110,8 @@ export const useStore = create<State>()(
        * working from the data already in memory; what is lost is only the
        * cache for the next reload, and anything signed in is on the server.
        */
-      storage: createJSONStorage(() => cache),
+      // The cache never looks inside the value, so its shape is persist's business.
+      storage: cache as PersistStorage<any>,
       onRehydrateStorage: () => (state) => {
         if (!state) return
         setBaseCurrency(state.settings.baseCurrency)

@@ -229,3 +229,23 @@ check('plans are grouped by the year they land in', () => {
 })
 
 console.log(`\n${m} plan checks passed`)
+
+{
+  let q = 0
+  const c = (name, fn) => { try { fn(); q++; console.log('  ok  ', name) } catch (e) { console.error('  FAIL', name, '\n      ', e.stack.split('\n').slice(0, 3).join('\n       ')); process.exitCode = 1 } }
+  console.log('\nTime left')
+  c('a plan just started has all its time left', () => {
+    assert.equal(planTiming(plan(0, '2026-10-19', '2032-10-19'), '2026-10-19').timeLeftPct, 100)
+  })
+  c('time left and time gone add up to the whole window', () => {
+    const t = planTiming(plan(10, '2026-03-06', '2029-03-20'), '2026-10-19')
+    assert.equal(t.timeLeftPct + t.expected, 100)
+  })
+  c('a finished window has none left', () => {
+    assert.equal(planTiming(plan(50, '2026-01-01', '2026-06-30'), '2026-10-19').timeLeftPct, 0)
+  })
+  c('without a window it does not invent a figure', () => {
+    assert.equal(planTiming(plan(20, undefined, '2027-01-01'), '2026-10-19').timeLeftPct, null)
+  })
+  console.log(`\n${q} time-left checks passed`)
+}

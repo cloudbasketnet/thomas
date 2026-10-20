@@ -191,7 +191,10 @@ export function planTiming(d: Pick<Dream, 'progress' | 'startDate' | 'targetDate
     Planned: d.startDate && today < d.startDate ? `Starts ${d.startDate}.` : 'Not started yet.',
   }
 
-  return { progress, status, total, done, left, expected, explain: explain[status] }
+  /** Share of the plan's window still ahead — the time-left ring. Null without a window. */
+  const timeLeftPct = hasWindow ? Math.round(((total - done) / total) * 100) : null
+
+  return { progress, status, total, done, left, expected, timeLeftPct, explain: explain[status] }
 }
 
 /** The year a plan lands in — the board is grouped by when things should be done. */

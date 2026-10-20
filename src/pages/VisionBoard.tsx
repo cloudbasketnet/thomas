@@ -265,21 +265,35 @@ export default function VisionBoard() {
 }
 
 /** A percentage as a ring — the three donuts in Today's Time Analysis. */
-function Ring({ value, color }: { value: number; color: string }) {
+function Ring({ value, color, caption }: { value: number; color: string; caption?: string }) {
   const r = 26
   const c = 2 * Math.PI * r
-  const dash = (Math.min(100, Math.max(0, value)) / 100) * c
-  return (
-    <svg viewBox="0 0 64 64" className="w-full max-w-[64px] mx-auto" role="img" aria-label={`${value}%`}>
+  const v = Math.min(100, Math.max(0, value))
+  const dash = (v / 100) * c
+  const ring = (
+    <svg viewBox="0 0 64 64" className="w-full max-w-[64px] mx-auto" role="img" aria-label={`${caption ?? ''} ${value}%`}>
       <circle cx="32" cy="32" r={r} fill="none" stroke="#eef2f8" strokeWidth="7" />
-      <circle
-        cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
-        strokeDasharray={`${dash} ${c - dash}`} transform="rotate(-90 32 32)"
-      />
+      {/* At 0 a round line cap still paints a dot, so there is no arc at all. */}
+      {v > 0 && (
+        <circle
+          cx="32" cy="32" r={r} fill="none" stroke={color} strokeWidth="7" strokeLinecap="round"
+          strokeDasharray={`${dash} ${c - dash}`} transform="rotate(-90 32 32)"
+        />
+      )}
       <text x="32" y="36" textAnchor="middle" className="fill-slate-800" style={{ fontSize: 15, fontWeight: 800 }}>{value}%</text>
     </svg>
   )
+  if (!caption) return ring
+  return (
+    <div className="text-center w-[70px]">
+      {ring}
+      <p className="text-[10px] font-semibold text-slate-500 mt-1 leading-tight">{caption}</p>
+    </div>
+  )
 }
+
+/** The time-left ring's colour: plenty left, getting on, nearly out. */
+const timeColor = (pct: number) => (pct > 50 ? '#3b82f6' : pct > 20 ? '#f59e0b' : '#ef4444')
 
 /** One bar per day of the month — rest behind, gym in front. */
 function DayBars({ days }: { days: { day: number; rest: number; gym: number }[] }) {
@@ -625,7 +639,7 @@ function PlansView({ dreams, query, onEdit, onAdd }: {
                       return (
                         <div key={d.id} className="relative">
                           <span className="absolute -left-[37px] sm:-left-[41px] top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-brand-500 ring-4 ring-white" />
-                          <div className="grid gap-3 grid-cols-[84px_minmax(0,1fr)] md:grid-cols-[96px_minmax(0,1.3fr)_64px_auto_minmax(0,1fr)] items-center rounded-2xl border border-[#eef2f8] bg-white p-2.5">
+                          <div className="grid gap-3 grid-cols-[84px_minmax(0,1fr)] md:grid-cols-[96px_minmax(0,1.3fr)_auto_minmax(0,1fr)] items-center rounded-2xl border border-[#eef2f8] bg-white p-2.5">
                             <PlanImage d={d} className="h-20 md:h-[84px] rounded-xl" />
 
                             <div className="min-w-0">
@@ -641,14 +655,21 @@ function PlansView({ dreams, query, onEdit, onAdd }: {
                               {t.total > 0 && <p className="text-[10.5px] text-slate-400 mt-1">{t.done} of {t.total} days completed</p>}
                             </div>
 
-                            <div className="hidden md:block"><Ring value={t.progress} color="#10b981" /></div>
-
-                            <span
-                              className="hidden md:inline-flex justify-self-start rounded-full px-3 py-1 text-[11.5px] font-bold whitespace-nowrap"
-                              style={{ background: tone.bg, color: tone.color }}
-                            >
-                              {t.left === null ? 'No end date' : t.left === 0 ? 'Due' : `${t.left} days left`}
-                            </span>
+                            {/* Progress made beside time remaining: the two figures the status compares. */}
+                            <div className="hidden md:flex items-start gap-2">
+                              <Ring value={t.progress} color="#10b981" caption="Done" />
+                              {t.timeLeftPct === null ? (
+                                <div className="w-[70px] h-16 grid place-items-center text-center text-[10px] font-semibold text-slate-400 leading-tight">
+                                  {t.left === null ? 'No end date' : `${t.left} days left`}
+                                </div>
+                              ) : (
+                                <Ring
+                                  value={t.timeLeftPct}
+                                  color={timeColor(t.timeLeftPct)}
+                                  caption={t.left === 0 ? 'Time up' : `${t.left} days left`}
+                                />
+                              )}
+                            </div>
 
                             <button
                               onClick={() => onEdit(d)}
@@ -660,7 +681,7 @@ function PlansView({ dreams, query, onEdit, onAdd }: {
                               <span className="min-w-0">
                                 <span className="block text-[12.5px] font-bold" style={{ color: tone.color }}>
                                   {t.status}
-                                  <span className="md:hidden font-semibold text-slate-500"> · {t.progress}%{t.left !== null ? ` · ${t.left} days left` : ''}</span>
+                                  <span className="md:hidden font-semibold text-slate-500"> · {t.progress}% done{t.timeLeftPct !== null ? ` · ${t.timeLeftPct}% of time left` : t.left !== null ? ` · ${t.left} days left` : ''}</span>
                                 </span>
                                 <span className="block text-[11px] text-slate-600 leading-snug mt-0.5">{d.note || t.explain}</span>
                               </span>

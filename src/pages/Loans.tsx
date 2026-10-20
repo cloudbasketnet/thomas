@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertTriangle, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Badge, Card, CardHead, Empty, Progress, statusTone } from '@/components/ui/Primitives'
+import { Badge, Card, CardHead, Empty, Progress, SortSelect, statusTone, useSortChoice } from '@/components/ui/Primitives'
+import { SORT_OPTIONS, loanSortView, sortBy, type SortKey } from '@/lib/sorting'
 import { Modal, Field } from '@/components/ui/Modal'
 import { TransferModal } from '@/components/TransferModal'
 import { TransactionModal } from '@/components/TransactionModal'
@@ -22,6 +23,8 @@ import type { Currency, Loan, Transaction, Transfer } from '@/types'
 export function LoansSection() {
   const { loans, accounts, transactions, transfers, addLoan, updateLoan, removeLoan, addTransfer, removeTransfer, removeTransaction } =
     useStore()
+  const [sort, setSort] = useSortChoice<SortKey>('cb360.sort.loans', 'due-asc', SORT_OPTIONS.map((o) => o.key))
+  const sortedLoans = useMemo(() => sortBy(loans, sort, loanSortView), [loans, sort])
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState<Loan | null>(null)
   const [payFor, setPayFor] = useState<Loan | null>(null)
@@ -62,7 +65,11 @@ export function LoansSection() {
       )}
 
       <Card>
-        <CardHead title="Loan Tracker" sub="Outstanding balance, EMI and next payment date" />
+        <CardHead
+          title="Loan Tracker"
+          sub="Outstanding balance, EMI and next payment date"
+          right={<SortSelect value={sort} onChange={setSort} options={SORT_OPTIONS} />}
+        />
         <div className="overflow-x-auto scroll-thin">
           <table className="w-full min-w-[900px]">
             <thead className="bg-slate-50/70">
@@ -80,7 +87,7 @@ export function LoansSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f1f5f9]">
-              {loans.map((l) => {
+              {sortedLoans.map((l) => {
                 // Interest can push a balance above what was borrowed; that is
                 // nothing repaid, not a negative repayment.
                 const repaid = Math.max(0, l.principal - l.outstanding)

@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { CalendarClock, CheckCircle2, ListChecks, Pencil, Plus, ReceiptText, Sparkles, Trash2 } from 'lucide-react'
 import { useStore } from '@/store/useStore'
-import { Card, CardHead, Empty, Progress, StatCard, Switch } from '@/components/ui/Primitives'
+import { Card, CardHead, Empty, Progress, SortSelect, StatCard, Switch, useSortChoice } from '@/components/ui/Primitives'
+import { SORT_OPTIONS, planSortView, sortBy, type SortKey } from '@/lib/sorting'
 import { Modal, Field } from '@/components/ui/Modal'
 import { ScheduleEditor, ScheduleView, PayModal } from '@/components/PaymentSchedule'
 import { allSchedulesTotal, generateSchedule, installmentStatus, resolvePlan, scheduleSummary, MAX_INSTALLMENTS, type GenerateMode } from '@/lib/schedules'
@@ -87,6 +88,12 @@ export function InstallmentsSection() {
     [plans, txnIds],
   )
 
+  const [sort, setSort] = useSortChoice<SortKey>('cb360.sort.plans', 'due-asc', SORT_OPTIONS.map((o) => o.key))
+  const sortedPlans = useMemo(
+    () => sortBy(plans, sort, (n) => planSortView(n.title, summaries.get(n.id)!, n.schedule?.[0]?.currency ?? 'AED')),
+    [plans, sort, summaries],
+  )
+
   // Each plan's own card reports in that plan's currency. These cards add every
   // plan together, so each instalment is converted first — a 100,000 rupee plan
   // is not 100,000 dirhams, and summing the raw figures would say it is.
@@ -162,8 +169,12 @@ export function InstallmentsSection() {
       {plans.length === 0 ? (
         <Card><div className="py-10"><Empty text="No installment plans yet — add one for a fee, purchase or bill paid in parts." /></div></Card>
       ) : (
+        <>
+        <div className="flex justify-end">
+          <SortSelect value={sort} onChange={setSort} options={SORT_OPTIONS} />
+        </div>
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
-          {plans.map((n) => {
+          {sortedPlans.map((n) => {
             const sum = summaries.get(n.id)!
             const isOpen = expanded === n.id
             return (
@@ -209,6 +220,7 @@ export function InstallmentsSection() {
             )
           })}
         </div>
+        </>
       )}
 
       <Modal
